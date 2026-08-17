@@ -1,0 +1,3023 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ellinga Brewing — Brew Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<!-- Optional: enables real-time cross-device sync via a free Firebase project.
+     Loaded as plain <script> tags so a failed/blocked load never breaks the app —
+     it just falls back to the other storage modes. See the "Cloud Sync" panel
+     under Equipment & data for setup instructions. -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js" onerror="window._firebaseLoadFailed=true"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js" onerror="window._firebaseLoadFailed=true"></script>
+<style>
+  :root{
+    --bg: #17181A;
+    --surface: #1F2023;
+    --surface-raised: #292A2E;
+    --line: #3A3B40;
+    --amber: #BD8248;
+    --amber-bright: #D89B5C;
+    --foam: #E9E9EA;
+    --foam-dim: #9A9CA2;
+    --malt-red: #6B4A38;
+    --hop-green: #7C8F7A;
+    --danger: #AE5A44;
+    --radius: 3px;
+    --font-display: "Fraunces", serif;
+    --font-body: "IBM Plex Sans", sans-serif;
+    --font-mono: "IBM Plex Mono", monospace;
+  }
+  body.theme-light{
+    --bg: #F1F1F0;
+    --surface: #FFFFFF;
+    --surface-raised: #F6F5F3;
+    --line: #DCDAD5;
+    --amber: #A8672E;
+    --amber-bright: #8F5626;
+    --foam: #232323;
+    --foam-dim: #6E6D68;
+    --malt-red: #6B4A38;
+    --hop-green: #5F7A5C;
+    --danger: #A24632;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--foam);font-family:var(--font-body);}
+  ::selection{background:var(--amber);color:#17130E;}
+
+  #app{display:flex;min-height:100vh;}
+  .sidebar{
+    width:220px;flex:none;background:var(--surface);border-right:1px solid var(--line);
+    display:flex;flex-direction:column;padding:22px 0;
+  }
+  .brand{padding:0 20px 20px 20px;border-bottom:1px solid var(--line);margin-bottom:14px;}
+  .brand-mark{font-family:var(--font-display);font-weight:700;font-size:1.4rem;color:var(--amber-bright);letter-spacing:0.01em;line-height:1.2;}
+  .brand-sub{font-family:var(--font-mono);font-size:0.68rem;color:var(--foam-dim);letter-spacing:0.08em;text-transform:uppercase;margin-top:4px;}
+
+  nav{display:flex;flex-direction:column;gap:1px;padding:0 10px;}
+  .nav-btn{display:flex;align-items:center;gap:10px;text-align:left;background:none;border:none;color:var(--foam-dim);font-family:var(--font-body);font-size:0.9rem;padding:10px 10px;border-radius:var(--radius);cursor:pointer;transition:background .15s, color .15s;}
+  .nav-btn .glyph{font-family:var(--font-mono);font-size:0.76rem;color:var(--amber);width:18px;text-align:center;}
+  .nav-btn:hover{background:var(--surface-raised);color:var(--foam);}
+  .nav-btn.active{background:var(--surface-raised);color:var(--foam);box-shadow:inset 3px 0 0 var(--amber);}
+  .sidebar-foot{margin-top:auto;padding:14px 20px 0 20px;border-top:1px solid var(--line);font-family:var(--font-mono);font-size:0.62rem;color:#5c503a;line-height:1.6;}
+
+  main{flex:1;padding:34px 40px 60px 40px;max-width:1220px;}
+  .view{display:none;}
+  .view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+
+  h1.page-title{font-family:var(--font-display);font-weight:600;font-size:1.9rem;margin:0 0 4px 0;color:var(--foam);}
+  .page-sub{color:var(--foam-dim);font-size:0.92rem;margin:0 0 28px 0;}
+
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:22px 24px;margin-bottom:20px;}
+  .panel-title{font-family:var(--font-display);font-weight:600;font-size:1.1rem;margin:0 0 16px 0;color:var(--amber-bright);}
+  .grid{display:grid;gap:14px;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  .grid.cols-3{grid-template-columns:1fr 1fr 1fr;}
+  .grid.cols-4{grid-template-columns:repeat(4,1fr);}
+  @media(max-width:820px){.grid.cols-2,.grid.cols-3,.grid.cols-4{grid-template-columns:1fr;}}
+
+  label{display:block;font-size:0.72rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--foam-dim);margin-bottom:5px;}
+  input, select, textarea{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--foam);padding:8px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:0.88rem;}
+  textarea{font-family:var(--font-body);}
+  input:focus, select:focus, textarea:focus{outline:2px solid var(--amber);outline-offset:0;border-color:var(--amber);}
+  .field{margin-bottom:0;}
+  .field .hint{font-family:var(--font-mono);font-size:0.62rem;color:#6b5e42;margin-top:4px;}
+
+  button.btn{background:var(--amber);color:#1a1408;border:none;padding:9px 16px;border-radius:var(--radius);font-family:var(--font-body);font-weight:600;font-size:0.85rem;cursor:pointer;transition:background .15s;}
+  button.btn:hover{background:var(--amber-bright);}
+  button.btn.ghost{background:none;border:1px solid var(--line);color:var(--foam-dim);}
+  button.btn.ghost:hover{border-color:var(--amber);color:var(--foam);}
+  button.btn.danger{background:none;border:1px solid var(--danger);color:var(--danger);}
+  button.btn.danger:hover{background:var(--danger);color:var(--foam);}
+  button.btn.small{padding:5px 10px;font-size:0.76rem;}
+  button:focus-visible, a:focus-visible, .nav-btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+
+  table{width:100%;border-collapse:collapse;font-size:0.86rem;}
+  th{text-align:left;font-family:var(--font-mono);font-size:0.66rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--foam-dim);padding:8px 6px;border-bottom:1px solid var(--line);}
+  td{padding:8px 6px;border-bottom:1px solid var(--line);}
+  tr:last-child td{border-bottom:none;}
+  td input, td select{padding:5px 7px;font-size:0.82rem;}
+
+  .stat-row{display:flex;flex-wrap:wrap;gap:0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;}
+  .stat{flex:1;min-width:110px;padding:14px 16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface);}
+  .stat:last-child{border-right:none;}
+  .stat-label{font-family:var(--font-mono);font-size:0.64rem;text-transform:uppercase;letter-spacing:0.07em;color:var(--foam-dim);}
+  .stat-value{font-family:var(--font-mono);font-size:1.4rem;color:var(--amber-bright);margin-top:3px;}
+  .stat-value .unit{font-size:0.85rem;color:var(--foam-dim);margin-left:3px;}
+
+  .srm-swatch{width:20px;height:20px;border-radius:50%;display:inline-block;vertical-align:middle;border:1px solid rgba(0,0,0,.3);margin-left:8px;}
+
+  .recipe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:16px;}
+  .recipe-card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:18px;cursor:pointer;position:relative;transition:border-color .15s, transform .15s;}
+  .recipe-card:hover{border-color:var(--amber);transform:translateY(-2px);}
+  .batch-stamp{position:absolute;top:14px;right:14px;min-width:40px;height:40px;padding:0 4px;border-radius:20px;border:2px solid var(--amber);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:0.62rem;color:var(--amber);transform:rotate(-6deg);}
+  .recipe-card h3{font-family:var(--font-display);font-size:1.15rem;margin:0 46px 6px 0;color:var(--foam);}
+  .recipe-card .style{font-size:0.78rem;color:var(--foam-dim);margin-bottom:12px;}
+  .recipe-card .mini-stats{display:flex;gap:12px;flex-wrap:wrap;font-family:var(--font-mono);font-size:0.74rem;color:var(--foam-dim);}
+  .recipe-card .mini-stats b{color:var(--amber-bright);font-weight:500;}
+
+  .empty-state{border:1px dashed var(--line);border-radius:var(--radius);padding:40px 20px;text-align:center;color:var(--foam-dim);}
+  .empty-state .glyph-lg{font-family:var(--font-mono);font-size:1.6rem;color:var(--amber);margin-bottom:10px;}
+
+  .section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px;}
+  .toolbar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+
+  .badge{display:inline-block;font-family:var(--font-mono);font-size:0.64rem;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;border-radius:2px;border:1px solid var(--line);color:var(--foam-dim);}
+  .badge.active{border-color:var(--hop-green);color:var(--hop-green);}
+  .badge.done{border-color:var(--amber);color:var(--amber);}
+
+  .icon-btn{background:none;border:none;color:var(--foam-dim);cursor:pointer;font-family:var(--font-mono);font-size:0.8rem;padding:3px 6px;}
+  .icon-btn:hover{color:var(--danger);}
+
+  .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--foam-dim);text-decoration:none;font-family:var(--font-mono);font-size:0.78rem;margin-bottom:16px;cursor:pointer;background:none;border:none;}
+  .back-link:hover{color:var(--amber);}
+
+  .divider{height:1px;background:var(--line);margin:24px 0;}
+
+  .log-row{display:grid;grid-template-columns:110px 90px 80px 90px 1fr 30px;gap:10px;align-items:end;margin-bottom:10px;}
+  @media(max-width:760px){.log-row{grid-template-columns:1fr 1fr;}}
+  .chart-wrap{position:relative;height:280px;margin-bottom:22px;}
+  .chart-fallback{display:flex;align-items:center;justify-content:center;height:100%;color:var(--foam-dim);text-align:center;border:1px dashed var(--line);border-radius:var(--radius);}
+  .pack-row{display:grid;grid-template-columns:110px 100px 90px 100px 1fr 30px;gap:10px;align-items:end;margin-bottom:10px;}
+  @media(max-width:760px){.pack-row{grid-template-columns:1fr 1fr;}}
+
+  .toast{position:fixed;bottom:22px;right:22px;background:var(--surface-raised);border:1px solid var(--amber);color:var(--foam);padding:10px 16px;border-radius:var(--radius);font-family:var(--font-mono);font-size:0.8rem;opacity:0;transform:translateY(8px);transition:opacity .2s, transform .2s;pointer-events:none;z-index:50;max-width:320px;}
+  .toast.show{opacity:1;transform:none;}
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg);}
+  ::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px;}
+
+  datalist{}
+  .db-hint{font-family:var(--font-mono);font-size:0.68rem;color:var(--foam-dim);margin-top:4px;min-height:14px;}
+
+  @media (prefers-reduced-motion: reduce){ *{animation:none !important;transition:none !important;} }
+
+  @media(max-width:760px){
+    #app{flex-direction:column;}
+    .sidebar{width:100%;flex-direction:row;overflow-x:auto;padding:12px;align-items:center;}
+    .brand{border:none;padding:0 14px 0 4px;margin:0;white-space:nowrap;}
+    nav{flex-direction:row;padding:0;}
+    .sidebar-foot{display:none;}
+    main{padding:22px 18px 50px 18px;}
+  }
+
+  #print-sheet{display:none;}
+  .ps-wrap{font-family:var(--font-body);color:#111;background:#fff;max-width:800px;}
+  .ps-head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:14px;}
+  .ps-head h1{font-family:var(--font-display);font-size:1.7rem;margin:0;}
+  .ps-head .ps-style{color:#444;font-size:0.9rem;}
+  .ps-head .ps-date{font-family:var(--font-mono);font-size:0.78rem;color:#444;text-align:right;}
+  .ps-stats{display:flex;flex-wrap:wrap;gap:0;border:1px solid #111;margin-bottom:16px;}
+  .ps-stats div{flex:1;min-width:90px;padding:8px 10px;border-right:1px solid #111;border-bottom:1px solid #111;}
+  .ps-stats div:last-child{border-right:none;}
+  .ps-stats .ps-label{font-family:var(--font-mono);font-size:0.6rem;text-transform:uppercase;letter-spacing:0.05em;color:#555;}
+  .ps-stats .ps-val{font-family:var(--font-mono);font-size:1.1rem;font-weight:600;}
+  .ps-section-title{font-family:var(--font-display);font-weight:600;font-size:1.05rem;margin:18px 0 6px 0;border-bottom:1px solid #999;padding-bottom:4px;}
+  .ps-wrap table{width:100%;border-collapse:collapse;font-size:0.85rem;margin-bottom:6px;}
+  .ps-wrap th{text-align:left;font-family:var(--font-mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.05em;color:#555;border-bottom:1px solid #111;padding:5px 4px;}
+  .ps-wrap td{padding:5px 4px;border-bottom:1px solid #ccc;}
+  .ps-check{width:16px;height:16px;border:1px solid #111;display:inline-block;}
+  .ps-two-col{display:flex;gap:24px;flex-wrap:wrap;}
+  .ps-two-col > div{flex:1;min-width:220px;}
+  .ps-notes-lines{border-bottom:1px solid #999;height:22px;}
+  .ps-log-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0;border:1px solid #111;margin-top:6px;}
+  .ps-log-grid div{border-right:1px solid #999;border-bottom:1px solid #999;padding:6px 8px;min-height:34px;font-size:0.78rem;}
+  .ps-log-grid div.ps-hdr{background:#eee;font-family:var(--font-mono);font-size:0.62rem;text-transform:uppercase;letter-spacing:0.04em;min-height:auto;}
+  .ps-footer{margin-top:20px;font-family:var(--font-mono);font-size:0.68rem;color:#777;text-align:center;}
+  .label-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8mm;}
+  .label-card{border:1px dashed #999;border-radius:4px;padding:10mm 8mm;color:#111;background:#fff;text-align:center;break-inside:avoid;}
+  .label-card .lbl-name{font-family:var(--font-display);font-weight:700;font-size:1.15rem;margin-bottom:2mm;}
+  .label-card .lbl-style{font-size:0.78rem;color:#444;margin-bottom:4mm;}
+  .label-card .lbl-stats{font-family:var(--font-mono);font-size:0.72rem;color:#333;margin-bottom:3mm;}
+  .label-card .lbl-lot{font-family:var(--font-mono);font-size:0.68rem;color:#666;border-top:1px solid #ccc;padding-top:2mm;margin-top:2mm;}
+  @media print{
+    body *{visibility:hidden;}
+    #print-sheet, #print-sheet *{visibility:visible;}
+    #print-sheet{display:block;position:absolute;top:0;left:0;width:100%;padding:14px;}
+    @page{margin:14mm;}
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">Ellinga Brewing</div>
+      <div class="brand-sub">Brewery operations</div>
+    </div>
+    <nav id="nav"></nav>
+    <div class="sidebar-foot">
+      <div id="save-indicator" style="font-family:var(--font-mono);font-size:0.66rem;margin-bottom:8px;">● —</div>
+      <div id="storage-mode-note">Shared brew data<br>— visible to anyone<br>with this link.</div>
+      <div style="margin-top:10px;">
+        <label style="margin-bottom:3px;">Logged in as</label>
+        <input id="brewer-name" placeholder="Your name" style="font-size:0.72rem;padding:6px 8px;" onchange="saveBrewerName()">
+      </div>
+      <button class="btn ghost small" id="theme-toggle" style="margin-top:10px;width:100%;" onclick="toggleTheme()">☾ Light mode</button>
+    </div>
+  </aside>
+
+  <main>
+    <!-- DASHBOARD -->
+    <section class="view" id="view-dashboard">
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-sub">What needs attention right now.</p>
+      <div id="dash-content"></div>
+    </section>
+
+    <!-- RECIPES -->
+    <section class="view" id="view-recipes">
+      <h1 class="page-title">Recipes</h1>
+      <p class="page-sub">Your grain bills, hop schedules, and batch stats — start a new one or open an existing brew.</p>
+      <div class="toolbar">
+        <button class="btn" onclick="openRecipeEditor(null)">+ New recipe</button>
+        <input id="recipe-search" placeholder="Search recipes by name or style…" style="max-width:280px;" oninput="renderRecipeGrid()">
+      </div>
+      <div class="recipe-grid" id="recipe-grid"></div>
+    </section>
+
+    <!-- RECIPE EDITOR -->
+    <section class="view" id="view-editor">
+      <button class="back-link" onclick="showView('recipes')">← Back to recipes</button>
+      <div class="grid cols-2" style="margin-bottom:18px;align-items:end;">
+        <div class="field"><label>Recipe name</label><input id="r-name" placeholder="e.g. Cascade Pale Ale" oninput="recalc()"></div>
+        <div class="field"><label>Style</label><input id="r-style" list="style-list" placeholder="e.g. American Pale Ale" oninput="recalc()"></div>
+      </div>
+
+      <div class="field" style="max-width:340px;margin-bottom:18px;">
+        <label>Equipment profile</label>
+        <select id="r-equipment" onchange="applyEquipment()"><option value="">— None / manual —</option></select>
+      </div>
+
+      <div class="grid cols-4" style="margin-bottom:20px;">
+        <div class="field"><label>Batch size (L)</label><input id="r-batch" type="number" step="0.5" value="19" oninput="recalc()"></div>
+        <div class="field"><label>Boil time (min)</label><input id="r-boil" type="number" step="1" value="60" oninput="recalc()"></div>
+        <div class="field"><label>Mash efficiency (%)</label><input id="r-eff" type="number" step="1" value="72" oninput="recalc()"></div>
+        <div class="field"><label>Yeast attenuation (%)</label><input id="r-atten" type="number" step="1" value="75" oninput="recalc()"></div>
+      </div>
+
+      <div class="stat-row" id="stat-row"></div>
+      <div id="style-range-panel"></div>
+      <div class="stat-row" id="water-stat-row"></div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2 class="panel-title" style="margin:0;">Fermentables</h2>
+          <button class="btn small ghost" onclick="addFermentable()">+ Add fermentable</button>
+        </div>
+        <table>
+          <thead><tr><th>Name</th><th style="width:90px;">Amount (kg)</th><th style="width:80px;">EBC</th><th style="width:100px;">Potential</th><th style="width:90px;">Cost ($/kg)</th><th style="width:36px;"></th></tr></thead>
+          <tbody id="ferm-body"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2 class="panel-title" style="margin:0;">Hops</h2>
+          <button class="btn small ghost" onclick="addHop()">+ Add hop</button>
+        </div>
+        <table>
+          <thead><tr><th>Name</th><th style="width:80px;">Amount (g)</th><th style="width:70px;">AA %</th><th style="width:80px;">Time (min)</th><th style="width:100px;">Use</th><th style="width:90px;">Cost ($/kg)</th><th style="width:36px;"></th></tr></thead>
+          <tbody id="hop-body"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2 class="panel-title" style="margin:0;">Mash schedule</h2>
+          <button class="btn small ghost" onclick="addMashStep()">+ Add step</button>
+        </div>
+        <table>
+          <thead><tr><th>Step</th><th style="width:110px;">Temp (°C)</th><th style="width:100px;">Time (min)</th><th style="width:36px;"></th></tr></thead>
+          <tbody id="mash-body"></tbody>
+        </table>
+      </div>
+
+      <div class="panel">
+        <div class="section-head">
+          <h2 class="panel-title" style="margin:0;">Labels &amp; attachments</h2>
+        </div>
+        <p class="page-sub" style="margin-bottom:14px;">Label artwork, photos, compliance docs — attach per container type and size. Images are auto-compressed on upload to keep sync fast.</p>
+        <div class="grid cols-3" style="margin-bottom:14px;">
+          <div class="field"><label>Container type</label>
+            <select id="label-container-type">
+              <option value="Can">Can</option>
+              <option value="Bottle">Bottle</option>
+              <option value="Keg">Keg</option>
+            </select>
+          </div>
+          <div class="field"><label>Capacity</label>
+            <select id="label-capacity" onchange="toggleCustomCapacity()">
+              <option value="250mL">250 mL</option>
+              <option value="330mL">330 mL</option>
+              <option value="375mL" selected>375 mL</option>
+              <option value="440mL">440 mL</option>
+              <option value="500mL">500 mL</option>
+              <option value="650mL">650 mL</option>
+              <option value="750mL">750 mL</option>
+              <option value="1L">1 L</option>
+              <option value="19L">19 L (keg)</option>
+              <option value="30L">30 L (keg)</option>
+              <option value="50L">50 L (keg)</option>
+              <option value="custom">Custom…</option>
+            </select>
+          </div>
+          <div class="field" id="label-capacity-custom-wrap" style="display:none;">
+            <label>Custom capacity</label>
+            <input id="label-capacity-custom" placeholder="e.g. 4.5L">
+          </div>
+        </div>
+        <div class="toolbar" style="margin-bottom:16px;">
+          <label class="btn ghost" style="cursor:pointer;">+ Add label / photo / doc<input type="file" accept="image/*,.pdf" style="display:none;" onchange="addLabelAttachment(event)"></label>
+        </div>
+        <div id="label-attachments-list"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Yeast &amp; cost</h2>
+        <div class="grid cols-3" style="margin-bottom:14px;">
+          <div class="field"><label>Yeast strain</label><input id="r-yeast" list="yeast-list" placeholder="e.g. US-05" oninput="handleYeastInput(this.value)"></div>
+          <div class="field"><label>Target ferm. temp (°C)</label><input id="r-fermtemp" type="number" oninput="recalc()"></div>
+          <div class="field"><label>Yeast cost ($/pack)</label><input id="r-yeastcost" type="number" step="0.5" value="0" oninput="recalc()"></div>
+        </div>
+        <label>Notes</label>
+        <textarea id="r-notes" rows="3" placeholder="Process notes, tweaks for next time…"></textarea>
+      </div>
+
+      <div class="stat-row" id="cost-stat-row"></div>
+
+      <div class="toolbar">
+        <button class="btn" onclick="saveRecipe()">Save recipe</button>
+        <button class="btn ghost" onclick="brewThis()">Send to fermentation log →</button>
+        <button class="btn ghost" onclick="saveRecipe();printBrewSheet(currentRecipeId)">🖶 Print brew sheet</button>
+        <button class="btn ghost" onclick="cloneAndScale()">⧉ Clone &amp; scale</button>
+        <button class="btn danger" onclick="deleteCurrentRecipe()">Delete recipe</button>
+      </div>
+    </section>
+
+    <!-- INGREDIENT LIBRARY -->
+    <section class="view" id="view-ingredients">
+      <h1 class="page-title">Ingredient library</h1>
+      <p class="page-sub">Reference data for fermentables, hops, and yeast. Type a name into any recipe row and matching values fill in automatically — still fully editable.</p>
+
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Fermentables (<span id="ferm-count"></span>)</h2></div>
+        <input placeholder="Search fermentables…" oninput="filterLibrary('ferm', this.value)" style="margin-bottom:12px;">
+        <table><thead><tr><th>Name</th><th style="width:90px;">Potential</th><th style="width:70px;">EBC</th><th style="width:120px;">Origin</th><th>Character</th></tr></thead><tbody id="lib-ferm-body"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Hops (<span id="hop-count"></span>)</h2></div>
+        <input placeholder="Search hops…" oninput="filterLibrary('hop', this.value)" style="margin-bottom:12px;">
+        <table><thead><tr><th>Name</th><th style="width:80px;">Typ. AA%</th><th style="width:90px;">Type</th><th style="width:120px;">Origin</th><th>Character</th></tr></thead><tbody id="lib-hop-body"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Yeast (<span id="yeast-count"></span>)</h2></div>
+        <input placeholder="Search yeast…" oninput="filterLibrary('yeast', this.value)" style="margin-bottom:12px;">
+        <table><thead><tr><th>Strain</th><th style="width:90px;">Atten.</th><th style="width:100px;">Ferm. range</th><th style="width:150px;">Source</th><th>Character</th></tr></thead><tbody id="lib-yeast-body"></tbody></table>
+      </div>
+    </section>
+
+    <!-- CALCULATORS -->
+    <section class="view" id="view-calc">
+      <h1 class="page-title">Calculators</h1>
+      <p class="page-sub">Standalone brew-day math — independent of any saved recipe.</p>
+
+      <div class="panel">
+        <h2 class="panel-title">ABV</h2>
+        <div class="grid cols-3">
+          <div class="field"><label>Original gravity</label><input id="c-og" type="number" step="0.001" value="1.050" oninput="calcABV()"></div>
+          <div class="field"><label>Final gravity</label><input id="c-fg" type="number" step="0.001" value="1.012" oninput="calcABV()"></div>
+          <div class="field"><label>Result</label><input id="c-abv-out" disabled></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Hop AA% substitution</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Your hops on hand a different alpha acid % than the recipe calls for? Find the adjusted weight that gives the same bittering contribution.</p>
+        <div class="grid cols-4">
+          <div class="field"><label>Grams in recipe</label><input id="h-aa-grams" type="number" step="1" value="30" oninput="calcHopAA()"></div>
+          <div class="field"><label>Recipe AA%</label><input id="h-aa-recipe" type="number" step="0.1" value="12" oninput="calcHopAA()"></div>
+          <div class="field"><label>Actual AA% (your stock)</label><input id="h-aa-actual" type="number" step="0.1" value="14" oninput="calcHopAA()"></div>
+          <div class="field"><label>Grams required</label><input id="h-aa-out" disabled></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Hydrometer temperature correction</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Corrects a gravity reading taken above/below your hydrometer's calibration temperature.</p>
+        <div class="grid cols-3" style="margin-bottom:16px;">
+          <div class="field"><label>Measured gravity</label><input id="h-measured" type="number" step="0.001" value="1.050" oninput="calcHydroCorrection()"></div>
+          <div class="field"><label>Sample temp (°C)</label><input id="h-sampletemp" type="number" step="0.5" value="25" oninput="calcHydroCorrection()"></div>
+          <div class="field"><label>Calibration temp (°C)</label><input id="h-caltemp" type="number" step="0.5" value="20" oninput="calcHydroCorrection()"></div>
+        </div>
+        <div class="stat-row" style="margin-bottom:0;">
+          <div class="stat"><div class="stat-label">Corrected gravity</div><div class="stat-value" id="h-out">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Yeast starter</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Simplified estimate of cells needed vs. what a pack provides — not a full growth model, but a solid gut-check.</p>
+        <div class="grid cols-4" style="margin-bottom:16px;">
+          <div class="field"><label>Batch volume (L)</label><input id="y-vol" type="number" step="0.5" value="19" oninput="calcYeastStarter()"></div>
+          <div class="field"><label>Target OG</label><input id="y-og" type="number" step="0.001" value="1.050" oninput="calcYeastStarter()"></div>
+          <div class="field"><label>Beer type</label>
+            <select id="y-type" onchange="calcYeastStarter()">
+              <option value="ale">Ale (0.75M cells/mL/°P)</option>
+              <option value="lager">Lager (1.5M cells/mL/°P)</option>
+            </select>
+          </div>
+          <div class="field"><label>Pack age (days)</label><input id="y-age" type="number" step="1" value="0" oninput="calcYeastStarter()"></div>
+        </div>
+        <div class="field" style="max-width:260px;margin-bottom:16px;"><label>Pack cell count (billion)</label><input id="y-packcells" type="number" step="1" value="100" oninput="calcYeastStarter()"></div>
+        <div class="stat-row" style="margin-bottom:0;">
+          <div class="stat"><div class="stat-label">Cells needed</div><div class="stat-value" id="y-needed">—</div></div>
+          <div class="stat"><div class="stat-label">Viable cells in pack</div><div class="stat-value" id="y-viable">—</div></div>
+          <div class="stat"><div class="stat-label">Suggested starter</div><div class="stat-value" id="y-starter">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Strike water temperature</h2>
+        <div class="grid cols-4">
+          <div class="field"><label>Grain weight (kg)</label><input id="s-grain" type="number" step="0.1" value="4.5" oninput="calcStrike()"></div>
+          <div class="field"><label>Water:grain ratio (L/kg)</label><input id="s-ratio" type="number" step="0.1" value="3" oninput="calcStrike()"></div>
+          <div class="field"><label>Grain temp (°C)</label><input id="s-graintemp" type="number" value="20" oninput="calcStrike()"></div>
+          <div class="field"><label>Target mash temp (°C)</label><input id="s-target" type="number" value="67" oninput="calcStrike()"></div>
+        </div>
+        <div class="stat-row" style="margin-top:16px;margin-bottom:0;">
+          <div class="stat"><div class="stat-label">Strike water volume</div><div class="stat-value" id="s-vol-out">—</div></div>
+          <div class="stat"><div class="stat-label">Strike water temp</div><div class="stat-value" id="s-temp-out">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Water salt additions</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Estimated ppm contribution per addition, for a given batch volume. Every salt is a cation+anion pair, so nothing here affects only one ion — that's basic chemistry (charge balance), not a limitation of this calculator.</p>
+        <div class="grid cols-4" style="margin-bottom:16px;">
+          <div class="field"><label>Batch volume (L)</label><input id="w-vol" type="number" step="0.5" value="19" oninput="calcWater()"></div>
+          <div class="field"><label>Gypsum, CaSO₄ (g)</label><input id="w-gypsum" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+          <div class="field"><label>Calcium chloride, CaCl₂ (g)</label><input id="w-cacl2" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+          <div class="field"><label>Epsom salt, MgSO₄ (g)</label><input id="w-epsom" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+        </div>
+        <div class="grid cols-4" style="margin-bottom:16px;">
+          <div class="field"><label>Table salt, NaCl (g)</label><input id="w-nacl" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+          <div class="field"><label>Baking soda, NaHCO₃ (g)</label><input id="w-soda" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+          <div class="field"><label>Chalk, CaCO₃ (g)</label><input id="w-chalk" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+        </div>
+        <p class="db-hint" style="margin-bottom:14px;">Chalk adds Ca²⁺ paired with alkalinity (HCO₃⁻) instead of Cl⁻ or SO₄²⁻ — useful for high-calcium, high-alkalinity profiles without dragging up chloride. It's poorly soluble though: it dissolves reliably only with enough CO₂/acid present (e.g. in an active mash), so results in plain strike water can be inconsistent — dose conservatively and expect some settling.</p>
+        <div class="stat-row" id="water-out" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Classic water profiles</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Historic brewing-water mineral profiles, shown as reference ppm.</p>
+        <div class="field" style="max-width:320px;margin-bottom:16px;">
+          <label>Profile</label>
+          <select id="w-preset" onchange="applyPreset()"><option value="">— Select a profile —</option></select>
+        </div>
+        <div class="stat-row" id="preset-out" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Target water calculator</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Suggests salt additions to approach a target profile, assuming you're starting from RO/distilled water. Doesn't account for existing tap water minerals — for that, subtract your tap profile from the target first.</p>
+        <div class="grid cols-2" style="margin-bottom:16px;">
+          <div class="field"><label>Batch volume (L)</label><input id="t-vol" type="number" step="0.5" value="19" oninput="calcTargetWater()"></div>
+          <div class="field"><label>Target profile</label>
+            <select id="t-preset" onchange="calcTargetWater()"><option value="">— Select a profile —</option></select>
+          </div>
+        </div>
+        <div class="stat-row" id="target-water-out" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Priming sugar (bottle carbonation)</h2>
+        <div class="grid cols-3" style="margin-bottom:16px;">
+          <div class="field"><label>Batch volume (L)</label><input id="p-vol" type="number" step="0.5" value="19" oninput="calcPriming()"></div>
+          <div class="field"><label>Beer temp (°C)</label><input id="p-temp" type="number" step="0.5" value="20" oninput="calcPriming()"></div>
+          <div class="field"><label>Target CO₂ (vol)</label><input id="p-target" type="number" step="0.1" value="2.4" oninput="calcPriming()"></div>
+        </div>
+        <div class="stat-row" style="margin-bottom:0;">
+          <div class="stat"><div class="stat-label">Dextrose (corn sugar)</div><div class="stat-value" id="p-dex-out">—</div></div>
+          <div class="stat"><div class="stat-label">Table sugar equivalent</div><div class="stat-value" id="p-suc-out">—</div></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Forced carbonation (kegging)</h2>
+        <div class="grid cols-2" style="margin-bottom:16px;">
+          <div class="field"><label>Keg temp (°C)</label><input id="f-temp" type="number" step="0.5" value="4" oninput="calcForcedCarb()"></div>
+          <div class="field"><label>Target CO₂ (vol)</label><input id="f-target" type="number" step="0.1" value="2.4" oninput="calcForcedCarb()"></div>
+        </div>
+        <div class="stat-row" style="margin-bottom:0;">
+          <div class="stat"><div class="stat-label">Regulator pressure</div><div class="stat-value" id="f-kpa-out">—</div></div>
+          <div class="stat"><div class="stat-label">Equivalent</div><div class="stat-value" id="f-psi-out">—</div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SALES & COSTING -->
+    <section class="view" id="view-sales">
+      <h1 class="page-title">Sales &amp; Costing</h1>
+      <p class="page-sub">Batch cost, packaging, excise, GST and margin — planning estimates only. Verify current rates and your obligations with the ATO or an accountant before setting real prices; selling alcohol in Australia requires a manufacturer excise licence.</p>
+
+      <div class="panel">
+        <h2 class="panel-title">Batch basics</h2>
+        <div class="field" style="max-width:340px;margin-bottom:16px;">
+          <label>Base on a saved recipe (optional)</label>
+          <select id="sc-recipe" onchange="applySalesRecipe()"><option value="">— Manual entry —</option></select>
+        </div>
+        <div class="grid cols-4" style="margin-bottom:16px;">
+          <div class="field"><label>Batch volume (L)</label><input id="sc-vol" type="number" step="0.5" value="19" oninput="calcSalesCosting()"></div>
+          <div class="field"><label>ABV (%)</label><input id="sc-abv" type="number" step="0.1" value="5.0" oninput="calcSalesCosting()"></div>
+          <div class="field"><label>Ingredient cost ($)</label><input id="sc-ingcost" type="number" step="0.5" value="0" oninput="calcSalesCosting()"></div>
+          <div class="field"><label>Container size (mL)</label><input id="sc-size" type="number" step="5" value="375" oninput="calcSalesCosting()"></div>
+        </div>
+        <div class="grid cols-2">
+          <div class="field"><label>Container type (for excise rate)</label>
+            <select id="sc-container" onchange="calcSalesCosting()">
+              <option value="packaged">Bottle / can (packaged rate)</option>
+              <option value="draught">Keg — pressurised/tap dispense (draught rate)</option>
+            </select>
+          </div>
+          <div class="field"><label>Units produced</label><input id="sc-units" type="number" step="1" value="50" disabled></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Packaging &amp; material costs</h2>
+        <div class="grid cols-4" style="margin-bottom:16px;">
+          <div class="field"><label>Container ($/unit)</label><input id="sc-container-cost" type="number" step="0.01" value="0.35" oninput="calcSalesCosting()"></div>
+          <div class="field"><label>Cap/lid/crown ($/unit)</label><input id="sc-cap-cost" type="number" step="0.01" value="0.05" oninput="calcSalesCosting()"></div>
+          <div class="field"><label>Label ($/unit)</label><input id="sc-label-cost" type="number" step="0.01" value="0.10" oninput="calcSalesCosting()"></div>
+          <div class="field"><label>CO₂ / carbonation ($, whole batch)</label><input id="sc-co2-cost" type="number" step="1" value="5" oninput="calcSalesCosting()"></div>
+        </div>
+        <div class="field" style="max-width:260px;"><label>Other costs ($, whole batch)</label><input id="sc-other-cost" type="number" step="1" value="0" oninput="calcSalesCosting()"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Excise duty (ATO)</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Beer excise is payable on alcohol content above 1.15% ABV. Rates shown are current ATO figures as of February 2026 (indexed every Feb/Aug) — <span class="db-hint" style="display:inline;">confirm current rates before relying on this for real filings.</span></p>
+        <div class="field" style="max-width:420px;margin-bottom:14px;">
+          <label><input type="checkbox" id="sc-amr" onchange="calcSalesCosting()" style="width:auto;margin-right:8px;">Eligible for Excise Remission (AMR) — small manufacturer, under $400,000/yr</label>
+        </div>
+        <div class="stat-row" id="sc-excise-out" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">GST</h2>
+        <div class="field" style="max-width:260px;"><label><input type="checkbox" id="sc-gst" checked onchange="calcSalesCosting()" style="width:auto;margin-right:8px;">Apply 10% GST</label></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Cost summary</h2>
+        <div class="stat-row" id="sc-cost-summary" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Pricing &amp; margin</h2>
+        <div class="grid cols-2" style="margin-bottom:16px;">
+          <div class="field"><label>Sale price per unit ($, GST-inclusive)</label><input id="sc-price" type="number" step="0.1" value="8" oninput="calcSalesCosting()"></div>
+          <div class="field"><label>— or set a target GP% instead</label><input id="sc-target-gp" type="number" step="1" placeholder="e.g. 60" oninput="calcSalesCosting()"></div>
+        </div>
+        <div class="stat-row" id="sc-margin-out" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Batch profit projection</h2>
+        <div class="stat-row" id="sc-profit-out" style="margin-bottom:0;"></div>
+      </div>
+    </section>
+
+    <!-- EQUIPMENT & DATA -->
+    <section class="view" id="view-equipment">
+      <h1 class="page-title">Equipment &amp; data</h1>
+      <p class="page-sub">System profiles for accurate volume predictions, plus backup/restore and cross-device sync.</p>
+
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Cloud Sync</h2><span class="badge" id="sync-status-badge">not connected</span></div>
+        <p class="page-sub" style="margin-bottom:14px;">Connect a free Firebase project to sync data live between your computer, phone, or anyone else's device — no Claude required. One-time setup, roughly 10 minutes, done once per device.</p>
+        <div id="sync-setup-steps" class="db-hint" style="line-height:1.7;margin-bottom:14px;">
+          1. Go to <b>console.firebase.google.com</b> → Create a project (name it anything, disable Analytics if asked).<br>
+          2. In the project, open <b>Build → Realtime Database</b> → Create database → start in <b>test mode</b>.<br>
+          3. In Realtime Database → <b>Rules</b> tab, set to <code>{"rules": {".read": true, ".write": true}}</code> and Publish (fine for a small private brewery; anyone with your config could read/write, same as the old "shared link" mode).<br>
+          4. Go to <b>Project settings</b> (gear icon) → scroll to "Your apps" → click the <b>&lt;/&gt;</b> (Web) icon → register an app (nickname anything, no hosting needed) → copy the <code>firebaseConfig</code> object shown.<br>
+          5. Paste that whole object below and click Connect. Repeat steps 4–5 (just paste the same config) on every other device you want synced.
+        </div>
+        <div class="field" style="margin-bottom:12px;">
+          <label>Paste your firebaseConfig object here</label>
+          <textarea id="firebase-config-input" rows="6" placeholder='{"apiKey": "...", "authDomain": "...", "databaseURL": "...", "projectId": "...", ...}'></textarea>
+        </div>
+        <div class="toolbar" style="margin-bottom:0;">
+          <button class="btn" onclick="connectFirebase()">Connect</button>
+          <button class="btn danger" onclick="disconnectFirebase()">Disconnect this device</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Equipment profiles</h2><button class="btn small ghost" onclick="addEquipment()">+ Add profile</button></div>
+        <div id="equipment-list"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Backup &amp; restore</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Export everything — recipes, batches, inventory, equipment — as a JSON file. Import to restore or migrate.</p>
+        <div class="toolbar" style="margin-bottom:0;">
+          <button class="btn" onclick="exportData()">⬇ Export all data</button>
+          <label class="btn ghost" style="cursor:pointer;">⬆ Import data<input type="file" accept=".json" style="display:none;" onchange="importData(event)"></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- INVENTORY -->
+    <section class="view" id="view-inventory">
+      <h1 class="page-title">Inventory</h1>
+      <p class="page-sub">What's on the shelf right now.</p>
+
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Fermentables — value: <span id="inv-ferm-value">$0</span></h2><button class="btn small ghost" onclick="addInvRow('fermentables')">+ Add</button></div>
+        <table><thead><tr><th>Name</th><th style="width:90px;">Qty (kg)</th><th style="width:90px;">Cost ($/kg)</th><th style="width:90px;">Low stock at</th><th style="width:36px;"></th></tr></thead><tbody id="inv-fermentables"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Hops — value: <span id="inv-hop-value">$0</span></h2><button class="btn small ghost" onclick="addInvRow('hops')">+ Add</button></div>
+        <table><thead><tr><th>Name</th><th style="width:90px;">Qty (g)</th><th style="width:90px;">Cost ($/kg)</th><th style="width:90px;">Low stock at</th><th style="width:36px;"></th></tr></thead><tbody id="inv-hops"></tbody></table>
+      </div>
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Yeast — value: <span id="inv-yeast-value">$0</span></h2><button class="btn small ghost" onclick="addInvRow('yeast')">+ Add</button></div>
+        <table><thead><tr><th>Strain</th><th style="width:90px;">Packets</th><th style="width:90px;">Cost ($/pack)</th><th style="width:90px;">Low stock at</th><th style="width:36px;"></th></tr></thead><tbody id="inv-yeast"></tbody></table>
+      </div>
+
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Vessels</h2><button class="btn small ghost" onclick="addVessel()">+ Add vessel</button></div>
+        <table>
+          <thead><tr><th>Name / label</th><th style="width:100px;">Capacity (L)</th><th style="width:130px;">Status</th><th style="width:160px;">Assigned batch</th><th style="width:36px;"></th></tr></thead>
+          <tbody id="vessel-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- FERMENTATION LOG -->
+    <section class="view" id="view-ferment">
+      <h1 class="page-title">Fermentation log</h1>
+      <p class="page-sub">Active and past batches — brew day through packaging, with full traceability by lot number.</p>
+
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Compare batches</h2></div>
+        <div class="grid cols-2" style="margin-bottom:16px;">
+          <div class="field"><label>Batch A</label><select id="compare-a" onchange="renderComparison()"><option value="">— Select —</option></select></div>
+          <div class="field"><label>Batch B</label><select id="compare-b" onchange="renderComparison()"><option value="">— Select —</option></select></div>
+        </div>
+        <div id="compare-out"></div>
+      </div>
+
+      <div class="toolbar">
+        <select id="batch-status-filter" style="max-width:220px;" onchange="renderBatchGrid()">
+          <option value="">All batches</option>
+          <option value="active">Fermenting</option>
+          <option value="conditioning">Conditioning</option>
+          <option value="done">Done / packaged</option>
+        </select>
+      </div>
+      <div class="recipe-grid" id="batch-grid"></div>
+
+      <div class="panel" id="batch-detail" style="display:none;margin-top:24px;">
+        <button class="back-link" onclick="closeBatchDetail()">← Back to batches</button>
+        <div class="section-head">
+          <h2 class="panel-title" style="margin:0;" id="batch-detail-title">Batch</h2>
+          <span class="badge" id="batch-detail-status"></span>
+        </div>
+        <div class="grid cols-4" style="margin-bottom:18px;">
+          <div class="field"><label>Lot number</label><input id="b-lot" disabled></div>
+          <div class="field"><label>Brew date</label><input id="b-date" type="date" onchange="saveBatchMeta()"></div>
+          <div class="field"><label>Status</label>
+            <select id="b-status" onchange="saveBatchMeta()">
+              <option value="active">Fermenting</option>
+              <option value="conditioning">Conditioning</option>
+              <option value="done">Done / packaged</option>
+            </select>
+          </div>
+          <div class="field"><label>Brewed by</label><input id="b-brewedby" disabled></div>
+        </div>
+
+        <h3 style="font-family:var(--font-display);font-size:1rem;color:var(--foam);margin:0 0 10px 0;">Fermentation chart</h3>
+        <div class="chart-wrap" id="fermentation-chart-wrap">
+          <div class="chart-fallback" id="fermentation-chart-fallback">Not enough readings yet to chart — add at least two.</div>
+        </div>
+        <h3 style="font-family:var(--font-display);font-size:1rem;color:var(--foam);margin:0 0 10px 0;">Gravity &amp; temperature readings</h3>
+        <div id="gravity-rows"></div>
+        <button class="btn small ghost" onclick="addGravityRow()">+ Add reading</button>
+        <div class="stat-row" style="margin-top:18px;margin-bottom:0;">
+          <div class="stat"><div class="stat-label">Current ABV</div><div class="stat-value" id="batch-abv-out">—</div></div>
+        </div>
+
+        <div class="divider"></div>
+        <h3 style="font-family:var(--font-display);font-size:1rem;color:var(--foam);margin:0 0 10px 0;">Packaging log</h3>
+        <div id="packaging-rows"></div>
+        <div class="toolbar" style="margin-bottom:0;">
+          <button class="btn small ghost" onclick="addPackagingRow()">+ Add packaging entry</button>
+          <button class="btn small ghost" onclick="printLabels()">🏷 Print labels</button>
+        </div>
+
+        <div class="divider"></div>
+        <h3 style="font-family:var(--font-display);font-size:1rem;color:var(--foam);margin:0 0 10px 0;">Tasting notes</h3>
+        <div class="grid cols-2" style="margin-bottom:14px;">
+          <div class="field"><label>Overall score (/50)</label><input id="b-score" type="number" min="0" max="50" onchange="saveBatchMeta()"></div>
+        </div>
+        <textarea id="b-tasting" rows="3" placeholder="Appearance, aroma, flavor, mouthfeel…" onchange="saveBatchMeta()"></textarea>
+
+        <div class="divider"></div>
+        <label>Batch notes</label>
+        <textarea id="b-notes" rows="3" onchange="saveBatchMeta()"></textarea>
+
+        <div class="toolbar" style="margin-top:18px;margin-bottom:0;">
+          <button class="btn danger" onclick="deleteBatch()">Delete this batch</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<div id="print-sheet"></div>
+
+<script>
+/* ---------------------------------------------------------------------
+   STATE + STORAGE (shared — visible to anyone with this artifact link)
+--------------------------------------------------------------------- */
+let state = { recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] };
+let currentRecipeId = null;
+let currentBatchId = null;
+
+const STORAGE_KEY = 'ellinga-brewing-data';
+const FIREBASE_CONFIG_KEY = 'ellinga-firebase-config'; // stored in localStorage, per device
+
+/* ---------------------------------------------------------------------
+   STORAGE BACKEND — three possible modes, tried in this order:
+
+   1. 'firebase' — a free Firebase Realtime Database the person connects
+      themselves (see the Cloud Sync panel under Equipment & data). Works
+      from any device/browser with internet, independent of Claude.
+      Real-time: edits on one device push to every other connected device
+      automatically via a live listener, no manual refresh needed.
+   2. 'cloud' — Claude's own key-value store. Only exists when this file
+      is opened through Claude's artifact viewer.
+   3. 'local' — this browser's local storage. Always available as a last
+      resort, but not shared between devices or people.
+--------------------------------------------------------------------- */
+let storageBackend = 'unknown';
+let firebaseDb = null;
+let firebaseRemoteApplyGuard = null; // last JSON string we wrote, to ignore our own echo
+
+function getFirebaseConfig(){
+  try{
+    const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function saveFirebaseConfig(cfg){
+  localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(cfg));
+}
+function clearFirebaseConfig(){
+  localStorage.removeItem(FIREBASE_CONFIG_KEY);
+}
+
+async function tryInitFirebase(){
+  const cfg = getFirebaseConfig();
+  if(!cfg) return false;
+  if(typeof firebase === 'undefined' || window._firebaseLoadFailed){
+    return false; // SDK didn't load (e.g. blocked in a sandboxed viewer) — fall back gracefully
+  }
+  try{
+    if(!firebase.apps || !firebase.apps.length){ firebase.initializeApp(cfg); }
+    firebaseDb = firebase.database();
+    // prove we can actually reach it
+    await firebaseDb.ref('ellinga-brewing/__probe__').set(Date.now());
+    return true;
+  }catch(e){
+    firebaseDb = null;
+    return false;
+  }
+}
+
+async function detectStorageBackend(){
+  if(await tryInitFirebase()){
+    storageBackend = 'firebase';
+    attachFirebaseListener();
+    updateStorageModeBanner();
+    return;
+  }
+  if(typeof window.storage !== 'undefined' && window.storage && typeof window.storage.set === 'function'){
+    try{
+      await window.storage.set('__ellinga_probe__', '1', false);
+      storageBackend = 'cloud';
+      updateStorageModeBanner();
+      return;
+    }catch(e){ /* fall through to local */ }
+  }
+  try{
+    localStorage.setItem('__ellinga_probe__', '1');
+    localStorage.removeItem('__ellinga_probe__');
+    storageBackend = 'local';
+  }catch(e){
+    storageBackend = 'none';
+  }
+  updateStorageModeBanner();
+}
+
+// Live sync: when the data changes in Firebase (from this device or any
+// other), refresh local state and re-render — unless it's just the echo
+// of our own most recent write.
+function attachFirebaseListener(){
+  if(!firebaseDb) return;
+  firebaseDb.ref('ellinga-brewing/' + STORAGE_KEY).on('value', snap=>{
+    const val = snap.val();
+    if(val === null) return;
+    if(val === firebaseRemoteApplyGuard) return; // our own write echoing back
+    try{
+      const loaded = JSON.parse(val);
+      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
+      renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect(); populateSalesRecipeSelect(); renderDashboard();
+      if(document.getElementById('batch-detail') && document.getElementById('batch-detail').style.display==='block' && currentBatchId){
+        const stillExists = state.batches.find(b=>b.id===currentBatchId);
+        if(stillExists){ renderGravityRows(); renderPackagingRows(); } else { closeBatchDetail(); }
+      }
+      showToast('Synced from another device');
+    }catch(e){}
+  });
+}
+
+function storageGet(key){
+  if(storageBackend==='firebase' && key===STORAGE_KEY){
+    return firebaseDb.ref('ellinga-brewing/'+key).once('value').then(snap=>{
+      const val = snap.val();
+      return val===null ? null : {key, value: val};
+    });
+  }
+  if(storageBackend==='cloud') return window.storage.get(key, key===STORAGE_KEY);
+  if(storageBackend==='local' || key!==STORAGE_KEY){ // personal prefs always stay local, even in firebase/cloud mode
+    const raw = localStorage.getItem('ellinga_'+key);
+    return Promise.resolve(raw===null ? null : {key, value: raw});
+  }
+  return Promise.reject(new Error('no storage backend available'));
+}
+function storageSet(key, value){
+  if(storageBackend==='firebase' && key===STORAGE_KEY){
+    firebaseRemoteApplyGuard = value;
+    return firebaseDb.ref('ellinga-brewing/'+key).set(value);
+  }
+  if(storageBackend==='cloud') return window.storage.set(key, value, key===STORAGE_KEY);
+  if(storageBackend==='local' || key!==STORAGE_KEY){
+    localStorage.setItem('ellinga_'+key, value);
+    return Promise.resolve({key, value});
+  }
+  return Promise.reject(new Error('no storage backend available'));
+}
+
+function updateStorageModeBanner(){
+  const el = document.getElementById('storage-mode-note');
+  const badge = document.getElementById('sync-status-badge');
+  if(el){
+    if(storageBackend==='firebase'){
+      el.innerHTML = '<span style="color:var(--hop-green);">Cloud Sync active</span><br>Synced live across your connected devices.';
+    } else if(storageBackend==='cloud'){
+      el.innerHTML = 'Shared brew data<br>— visible to anyone<br>with this link.';
+    } else if(storageBackend==='local'){
+      el.innerHTML = '<span style="color:var(--amber-bright);">Local-only mode</span><br>Saved in this browser only. Set up Cloud Sync (Equipment & data) to share across devices.';
+    } else {
+      el.innerHTML = '<span style="color:var(--danger);">No storage available</span><br>Changes will not be saved this session.';
+    }
+  }
+  if(badge){
+    if(storageBackend==='firebase'){ badge.textContent = 'connected'; badge.className = 'badge active'; }
+    else { badge.textContent = 'not connected'; badge.className = 'badge'; }
+  }
+}
+
+async function connectFirebase(){
+  const raw = document.getElementById('firebase-config-input').value.trim();
+  if(!raw){ showToast('Paste your firebaseConfig object first'); return; }
+  let cfg;
+  try{ cfg = JSON.parse(raw); }
+  catch(e){
+    // people often paste it as a JS object literal (unquoted keys) rather than
+    // strict JSON — try a forgiving fallback parse
+    try{ cfg = Function('"use strict"; return (' + raw + ')')(); }
+    catch(e2){ showToast('Could not parse that — check it\'s the full firebaseConfig object'); return; }
+  }
+  if(!cfg.databaseURL){ showToast('That config is missing "databaseURL" — Realtime Database may not be enabled yet'); return; }
+  if(typeof firebase === 'undefined' || window._firebaseLoadFailed){
+    showToast('Firebase library failed to load — check your internet connection and reload');
+    return;
+  }
+  saveFirebaseConfig(cfg);
+  const ok = await tryInitFirebase();
+  if(!ok){
+    showToast('Could not connect — check the config and database rules, then try again');
+    clearFirebaseConfig();
+    return;
+  }
+  // reconcile: if remote already has data, pull it down (this device joining an
+  // existing synced brewery); otherwise push what's here now so it isn't lost
+  const remote = await firebaseDb.ref('ellinga-brewing/'+STORAGE_KEY).once('value');
+  const remoteVal = remote.val();
+  if(remoteVal){
+    const loaded = JSON.parse(remoteVal);
+    state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
+    showToast('Connected — pulled existing synced data');
+  } else {
+    await firebaseDb.ref('ellinga-brewing/'+STORAGE_KEY).set(JSON.stringify(state));
+    showToast('Connected — this device\'s data is now the shared copy');
+  }
+  storageBackend = 'firebase';
+  attachFirebaseListener();
+  updateStorageModeBanner();
+  renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect(); populateSalesRecipeSelect(); renderDashboard();
+  setSaveIndicator('saved');
+}
+
+async function disconnectFirebase(){
+  if(!confirm('Disconnect this device from Cloud Sync? Your data stays as-is on this device; other connected devices are unaffected.')) return;
+  if(firebaseDb){ try{ firebaseDb.ref('ellinga-brewing/'+STORAGE_KEY).off(); }catch(e){} }
+  clearFirebaseConfig();
+  firebaseDb = null;
+  document.getElementById('firebase-config-input').value = '';
+  await detectStorageBackend();
+  showToast('Disconnected from Cloud Sync');
+}
+
+async function loadState(){
+  try{
+    const res = await storageGet(STORAGE_KEY);
+    if(res && res.value){
+      const loaded = JSON.parse(res.value);
+      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
+    }
+  }catch(e){ /* no data yet, or no storage backend */ }
+  renderRecipeGrid();
+  renderBatchGrid();
+  renderInventory();
+  renderEquipmentList();
+  populateEquipmentSelect();
+  populateSalesRecipeSelect();
+  renderDashboard();
+  setSaveIndicator(storageBackend==='none' ? 'unavailable' : 'saved');
+}
+
+let saveTimer = null;
+let saveRetryTimer = null;
+let saveFailCount = 0;
+
+function setSaveIndicator(status){
+  const el = document.getElementById('save-indicator');
+  if(!el) return;
+  if(status==='saving'){ el.textContent = '● Saving…'; el.style.color = 'var(--foam-dim)'; }
+  else if(status==='saved'){ el.textContent = storageBackend==='local' ? '● Saved locally' : '● All changes saved'; el.style.color = 'var(--hop-green)'; }
+  else if(status==='error'){ el.textContent = '● Save failed — retrying'; el.style.color = 'var(--danger)'; }
+  else if(status==='unavailable'){ el.textContent = '● Not saving — no storage'; el.style.color = 'var(--danger)'; }
+}
+
+async function doSave(){
+  clearTimeout(saveRetryTimer);
+  if(storageBackend==='none'){
+    setSaveIndicator('unavailable');
+    return; // don't loop forever on a permanent condition
+  }
+  setSaveIndicator('saving');
+  try{
+    await storageSet(STORAGE_KEY, JSON.stringify(state));
+    saveFailCount = 0;
+    setSaveIndicator('saved');
+  }catch(e){
+    setSaveIndicator('error');
+    saveFailCount++;
+    if(saveFailCount === 1) showToast(storageBackend==='cloud' ? 'Connection lost — retrying automatically' : 'Save failed — retrying automatically');
+    // back off a little longer each consecutive failure, capped at 15s
+    const delay = Math.min(15000, 2000 * saveFailCount);
+    saveRetryTimer = setTimeout(doSave, delay);
+  }
+}
+
+// immediate=true skips the debounce — used for deliberate actions (Save recipe,
+// delete, brew, etc.) where the user expects an instant, confirmed write.
+function persist(immediate){
+  clearTimeout(saveTimer);
+  if(immediate){ doSave(); return; }
+  setSaveIndicator('saving');
+  saveTimer = setTimeout(doSave, 400);
+}
+
+// Best-effort flush if the tab is closed/refreshed while a debounced save
+// (or a failed-save retry) is still pending, so an in-flight edit isn't lost.
+window.addEventListener('beforeunload', function(){
+  if(saveTimer || saveRetryTimer){
+    clearTimeout(saveTimer);
+    clearTimeout(saveRetryTimer);
+    if(storageBackend!=='none'){ try{ storageSet(STORAGE_KEY, JSON.stringify(state)); }catch(e){} }
+  }
+});
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+async function toggleTheme(){
+  const isLight = document.body.classList.toggle('theme-light');
+  const btn = document.getElementById('theme-toggle');
+  btn.textContent = isLight ? '☀ Dark mode' : '☾ Light mode';
+  try{ await storageSet('theme-pref', isLight ? 'light' : 'dark'); }catch(e){}
+}
+async function loadTheme(){
+  try{
+    const res = await storageGet('theme-pref');
+    if(res && res.value === 'light'){
+      document.body.classList.add('theme-light');
+      document.getElementById('theme-toggle').textContent = '☀ Dark mode';
+    }
+  }catch(e){}
+}
+
+let brewerName = '';
+async function saveBrewerName(){
+  brewerName = document.getElementById('brewer-name').value;
+  try{ await storageSet('brewer-name', brewerName); }catch(e){}
+}
+async function loadBrewerName(){
+  try{
+    const res = await storageGet('brewer-name');
+    if(res && res.value){
+      brewerName = res.value;
+      document.getElementById('brewer-name').value = brewerName;
+    }
+  }catch(e){}
+}
+
+/* ---------------------------------------------------------------------
+   INGREDIENT LIBRARY (reference data — typical published metric values;
+   auto-fills recipe rows, fully editable after)
+--------------------------------------------------------------------- */
+const FERMENTABLE_DB = [
+  {name:'2-Row Pale Malt', potential:309, ebc:4.1, origin:'Rahr Malting (USA) / Barrett Burston (Australia)', desc:'Clean, neutral base malt — the workhorse for most pale styles'},
+  {name:'6-Row Pale Malt', potential:292, ebc:4.1, origin:'Rahr Malting (USA)', desc:'Higher enzyme base malt, slightly grainy/husky, good for adjunct-heavy brews'},
+  {name:'Maris Otter', potential:317, ebc:6.7, origin:'Crisp Malting / Simpsons Malt (England)', desc:'Rich, biscuity, malty backbone — the classic English pale ale base'},
+  {name:'Golden Promise', potential:309, ebc:6.7, origin:'Simpsons Malt / Crisp Malting (Scotland)', desc:'Soft, slightly sweet malt character, popular in Scotch ales and whisky'},
+  {name:'Pilsner Malt', potential:309, ebc:2.8, origin:'Weyermann (Germany) / Bohemia Malt (Czechia)', desc:'Delicate, honey-like sweetness — base for crisp lagers and pilsners'},
+  {name:'Vienna Malt', potential:292, ebc:9.4, origin:'Weyermann (Germany)', desc:'Toasty, light amber, adds malt depth to lagers and amber ales'},
+  {name:'Munich Malt (Light)', potential:292, ebc:14.7, origin:'Weyermann (Germany)', desc:'Rich malty, bready sweetness — core of Munich helles and dunkel'},
+  {name:'Munich Malt (Dark)', potential:284, ebc:25.3, origin:'Weyermann (Germany)', desc:'Deeper toasted-bread character, adds color and malt intensity'},
+  {name:'Wheat Malt', potential:317, ebc:4.1, origin:'Weyermann (Germany) / Dingemans (Belgium)', desc:'Adds protein and a soft, bready, slightly tart wheat character'},
+  {name:'Rye Malt', potential:300, ebc:6.7, origin:'Weyermann (Germany)', desc:'Spicy, slightly sour, distinctive rye bread character'},
+  {name:'Rauchmalt (Smoked)', potential:292, ebc:6.7, origin:'Weyermann (Germany)', desc:'Campfire/smoky bacon character — signature of German rauchbier'},
+  {name:'Biscuit Malt', potential:292, ebc:65.0, origin:'Castle Malting / Dingemans (Belgium)', desc:'Toasted biscuit/cracker flavor, common in Belgian ales'},
+  {name:'Victory Malt', potential:284, ebc:73.0, origin:'Briess (USA)', desc:'Nutty, toasty biscuit character, American answer to biscuit malt'},
+  {name:'Melanoidin Malt', potential:284, ebc:70.3, origin:'Weyermann (Germany)', desc:'Deep malty richness, boosts body and red-amber color'},
+  {name:'Aromatic Malt', potential:275, ebc:67.7, origin:'Dingemans / Castle Malting (Belgium)', desc:'Intense malt aroma and flavor, used in small amounts for depth'},
+  {name:'Special Roast', potential:275, ebc:131.3, origin:'Briess (USA)', desc:'Toasty, slightly tart, reddish-brown character malt'},
+  {name:'Crystal 10L', potential:292, ebc:25.3, origin:'Crisp/Simpsons (England) — Briess Caramel 10L (USA)', desc:'Light caramel sweetness, subtle color, adds body'},
+  {name:'Crystal 20L', potential:292, ebc:51.8, origin:'Crisp/Simpsons (England) — Briess Caramel 20L (USA)', desc:'Light-medium caramel sweetness and golden-amber color'},
+  {name:'Crystal 40L', potential:284, ebc:104.8, origin:'Crisp/Simpsons (England) — Briess Caramel 40L (USA)', desc:'Classic caramel sweetness, amber color — pale ale staple'},
+  {name:'Crystal 60L', potential:284, ebc:157.8, origin:'Crisp/Simpsons (England) — Briess Caramel 60L (USA)', desc:'Rich caramel/toffee flavor, deeper amber-copper color'},
+  {name:'Crystal 80L', potential:275, ebc:210.8, origin:'Crisp/Simpsons (England) — Briess Caramel 80L (USA)', desc:'Dark caramel, raisin-like sweetness, copper-brown color'},
+  {name:'Crystal 90L', potential:275, ebc:237.3, origin:'Crisp/Simpsons (England) — Briess Caramel 90L (USA)', desc:'Deep caramel, dried fruit notes, brown color'},
+  {name:'Crystal 120L', potential:275, ebc:316.8, origin:'Crisp/Simpsons (England) — Briess Caramel 120L (USA)', desc:'Dark toffee, burnt sugar, deep brown color'},
+  {name:'Crystal 150L', potential:267, ebc:396.3, origin:'Crisp Malting (England)', desc:'Intense dark caramel/raisin, near-black brown color'},
+  {name:'CaraPils / Dextrine', potential:275, ebc:2.8, origin:'Briess (USA) — Weyermann equiv. is "Carafoam"', desc:'Adds body and head retention with no sweetness or color'},
+  {name:'CaraHell', potential:292, ebc:25.3, origin:'Weyermann (Germany)', desc:'Light caramel sweetness for German-style lagers'},
+  {name:'CaraRed', potential:284, ebc:51.8, origin:'Weyermann (Germany)', desc:'Reddish color and mild caramel sweetness'},
+  {name:'CaraMunich I', potential:284, ebc:118.0, origin:'Weyermann (Germany)', desc:'Malty caramel sweetness, amber-copper color'},
+  {name:'CaraMunich II', potential:284, ebc:157.8, origin:'Weyermann (Germany)', desc:'Richer caramel malt flavor, deeper copper color'},
+  {name:'CaraMunich III', potential:284, ebc:210.8, origin:'Weyermann (Germany)', desc:'Intense caramel and dark fruit notes, dark copper color'},
+  {name:'CaraAroma', potential:275, ebc:343.3, origin:'Weyermann (Germany)', desc:'Deep dried-fruit caramel richness, dark brown color'},
+  {name:'Honey Malt', potential:284, ebc:65.0, origin:'Gambrinus Malting (Canada)', desc:'Sweet, honey-like malt flavor with light toast'},
+  {name:'Chocolate Malt', potential:234, ebc:926.3, origin:'Crisp Malting (England)', desc:'Roasted, chocolatey, coffee-like bitterness and dark brown color'},
+  {name:'Pale Chocolate Malt', potential:250, ebc:595.0, origin:'Crisp Malting (England)', desc:'Milder roasted chocolate flavor, less harsh bitterness'},
+  {name:'Black Patent Malt', potential:209, ebc:1323.8, origin:'Crisp Malting (England)', desc:'Sharp roasted, almost burnt/acrid character — used sparingly'},
+  {name:'Roasted Barley', potential:234, ebc:793.8, origin:'Crisp Malting (England) / Great Western (USA)', desc:'Dry roasted coffee character — defines Irish stout'},
+  {name:'Carafa I', potential:267, ebc:899.8, origin:'Weyermann (Germany)', desc:'Smooth roasted chocolate flavor without harshness'},
+  {name:'Carafa II', potential:267, ebc:1098.5, origin:'Weyermann (Germany)', desc:'Deep roasted color and flavor, dehusked for smoothness'},
+  {name:'Carafa III', potential:267, ebc:1323.8, origin:'Weyermann (Germany)', desc:'Very dark, smooth roast character, minimal astringency'},
+  {name:'Debittered Black Malt', potential:217, ebc:1323.8, origin:'Weyermann (Germany) — "Carafa Special"', desc:'Deep black color with reduced roasted bitterness'},
+  {name:'Flaked Oats', potential:275, ebc:1.4, origin:'Simpsons Malt (England)', desc:'Silky mouthfeel and haze — key to oatmeal stouts and hazy IPAs'},
+  {name:'Flaked Wheat', potential:284, ebc:4.1, origin:'Simpsons Malt (England)', desc:'Improves head retention and adds soft body'},
+  {name:'Flaked Barley', potential:267, ebc:4.1, origin:'Simpsons Malt (England)', desc:'Adds body and creamy head, common in stouts'},
+  {name:'Flaked Rye', potential:267, ebc:6.7, origin:'Simpsons Malt (England)', desc:'Spicy rye character with a smoother profile than rye malt'},
+  {name:'Flaked Corn (Maize)', potential:325, ebc:0.1, origin:'Simpsons Malt (England)', desc:'Lightens body and flavor, classic American lager adjunct'},
+  {name:'Flaked Rice', potential:317, ebc:0.1, origin:'Simpsons Malt (England)', desc:'Very neutral, lightens body — used in crisp lagers'},
+  {name:'Torrified Wheat', potential:284, ebc:4.1, origin:'Simpsons Malt (England)', desc:'Improves head retention, neutral flavor'},
+  {name:'Rice Hulls', potential:0, ebc:0, origin:'USA/Asia', desc:'No flavor or extract — purely a lauter aid for sticky mashes'},
+  {name:'Corn Sugar (Dextrose)', potential:384, ebc:0, origin:'USA', desc:'100% fermentable, no flavor — dries out beer, common priming sugar'},
+  {name:'Cane Sugar (Sucrose)', potential:384, ebc:0, origin:'Australia', desc:'100% fermentable, lightens body, classic in Belgian ales'},
+  {name:'Brown Sugar', potential:376, ebc:38.5, origin:'Australia', desc:'Toffee/molasses sweetness, adds color and body'},
+  {name:'Honey', potential:292, ebc:1.4, origin:'Australia', desc:'Delicate floral sweetness, dries the beer out'},
+  {name:'Maple Syrup', potential:250, ebc:38.5, origin:'Canada', desc:'Distinct maple sweetness and light color'},
+  {name:'Molasses', potential:300, ebc:210.8, origin:'Various', desc:'Dark, robust, slightly bitter sweetness'},
+  {name:'Belgian Candi Sugar (Clear)', potential:384, ebc:1.4, origin:'Candi Syrup Inc. (USA) / Candi Belge (Belgium)', desc:'Fully fermentable, boosts ABV without adding body'},
+  {name:'Belgian Candi Sugar (Dark)', potential:376, ebc:157.8, origin:'Candi Syrup Inc. (USA) / Candi Belge (Belgium)', desc:'Rich rum/raisin notes, classic in dark Belgian ales'},
+  {name:'Lactose (Milk Sugar)', potential:292, ebc:0, origin:'Various', desc:'Unfermentable — adds sweetness and body to milk stouts/sours'},
+  {name:'Light DME', potential:367, ebc:6.7, origin:'Muntons (England) / Briess (USA)', desc:'Neutral malt extract, used to boost gravity or for starters'},
+  {name:'Dark DME', potential:351, ebc:51.8, origin:'Muntons (England) / Briess (USA)', desc:'Malty, slightly caramelized extract with added color'},
+  {name:'Light LME', potential:300, ebc:9.4, origin:'Muntons (England) / Briess (USA)', desc:'Liquid malt extract, neutral sweetness'},
+  {name:'Dark LME', potential:292, ebc:51.8, origin:'Muntons (England) / Briess (USA)', desc:'Liquid malt extract with caramel/toffee character'},
+  {name:'Wheat DME', potential:351, ebc:6.7, origin:'Muntons (England)', desc:'Neutral wheat extract for boosting gravity'},
+  {name:'Wheat LME', potential:309, ebc:6.7, origin:'Muntons (England)', desc:'Liquid wheat extract, soft bready character'},
+  {name:'Pale Malt Extract', potential:300, ebc:6.7, origin:'Muntons (England)', desc:'General-purpose neutral extract'},
+  {name:'Acid Malt', potential:225, ebc:6.7, origin:'Weyermann (Germany) — "Sauermalz"', desc:'Lowers mash pH naturally, minimal flavor impact'},
+  {name:'Peated Malt', potential:309, ebc:4.1, origin:'Crisp Malting / Simpsons (Scotland)', desc:'Intense smoky, medicinal phenolic character'},
+  {name:'Joe White Traditional Ale Malt', potential:317, ebc:4.1, origin:'Australia (Joe White Maltings)', desc:'Full-flavoured Aussie base malt with a rich, bready backbone'},
+  {name:'Joe White Pilsner Malt', potential:309, ebc:2.8, origin:'Australia (Joe White Maltings)', desc:'Clean, delicate base malt for lagers and pale ales'},
+  {name:'Joe White Vienna Malt', potential:300, ebc:8.1, origin:'Australia (Joe White Maltings)', desc:'Light toasty sweetness, gentle amber colour'},
+  {name:'Joe White Light Munich Malt', potential:292, ebc:14.7, origin:'Australia (Joe White Maltings)', desc:'Malty depth for Munich-style lagers and amber ales'},
+  {name:'Joe White Dark Munich Malt', potential:284, ebc:30.6, origin:'Australia (Joe White Maltings)', desc:'Richer toasted-bread character and deeper colour'},
+  {name:'Joe White Wheat Malt', potential:317, ebc:4.1, origin:'Australia (Joe White Maltings)', desc:'Boosts head retention with a soft, bready wheat character'},
+  {name:'Joe White Caramalt', potential:292, ebc:51.8, origin:'Australia (Joe White Maltings)', desc:'Light caramel sweetness and golden colour'},
+  {name:'Joe White Dark Crystal Malt', potential:275, ebc:157.8, origin:'Australia (Joe White Maltings)', desc:'Rich caramel and dried-fruit character, deep amber-brown'},
+  {name:'Joe White Chocolate Malt', potential:234, ebc:926.3, origin:'Australia (Joe White Maltings)', desc:'Roasted, chocolatey depth with dark brown colour'},
+  {name:'Joe White Roasted Barley', potential:234, ebc:793.8, origin:'Australia (Joe White Maltings)', desc:'Dry roasted coffee character, classic stout ingredient'},
+  {name:'Joe White Black Malt', potential:209, ebc:1323.8, origin:'Australia (Joe White Maltings)', desc:'Sharp roasted character, used sparingly for colour'},
+  {name:'BB Pale Ale Malt', potential:317, ebc:6.7, origin:'Australia (Barrett Burston)', desc:'Workhorse Australian base malt with a soft malty character'},
+  {name:'BB Pilsner Malt', potential:309, ebc:2.8, origin:'Australia (Barrett Burston)', desc:'Delicate, clean base malt for lagers and pale styles'},
+  {name:'BB Vienna Malt', potential:300, ebc:9.4, origin:'Australia (Barrett Burston)', desc:'Toasty amber malt, adds gentle depth to lagers and ambers'},
+  {name:'BB Munich Malt', potential:292, ebc:20.0, origin:'Australia (Barrett Burston)', desc:'Rich malty sweetness for Munich-style beers'},
+  {name:'BB Wheat Malt', potential:317, ebc:4.1, origin:'Australia (Barrett Burston)', desc:'Improves head retention with soft wheat character'},
+  {name:'BB Crystal Malt Medium', potential:284, ebc:144.6, origin:'Australia (Barrett Burston)', desc:'Classic caramel sweetness, amber-copper colour'},
+  {name:'BB Crystal Malt Dark', potential:275, ebc:237.3, origin:'Australia (Barrett Burston)', desc:'Deep caramel and dried-fruit notes, dark copper colour'},
+  {name:'BB Chocolate Malt', potential:234, ebc:926.3, origin:'Australia (Barrett Burston)', desc:'Roasted chocolate character and dark colour'},
+  {name:'BB Black Malt', potential:209, ebc:1323.8, origin:'Australia (Barrett Burston)', desc:'Intense roasted character, used sparingly for colour'},
+  {name:'Voyager Pale Malt', potential:317, ebc:6.7, origin:'Australia (Voyager Craft Malt, WA)', desc:'WA-grown craft base malt with a soft, biscuity note'},
+  {name:'Voyager Wheat Malt', potential:317, ebc:5.4, origin:'Australia (Voyager Craft Malt, WA)', desc:'Craft wheat malt, soft and bready, boosts head retention'},
+  {name:'Voyager Rye Malt', potential:300, ebc:6.7, origin:'Australia (Voyager Craft Malt, WA)', desc:'Spicy rye character from WA-grown grain'},
+  {name:'Voyager Oat Malt', potential:275, ebc:4.1, origin:'Australia (Voyager Craft Malt, WA)', desc:'Silky mouthfeel, great for oatmeal stouts and hazy styles'},
+  {name:'Voyager Vienna Malt', potential:300, ebc:12.1, origin:'Australia (Voyager Craft Malt, WA)', desc:'Toasty amber malt from West Australian grain'},
+  {name:'Powells Pale Ale Malt', potential:317, ebc:6.7, origin:'Australia (Powells Craft Malt, TAS)', desc:'Tasmanian-grown craft base malt, soft and malty'},
+  {name:'Powells Pilsner Malt', potential:309, ebc:3.6, origin:'Australia (Powells Craft Malt, TAS)', desc:'Clean Tasmanian base malt for lagers and pale ales'},
+  {name:'Powells Munich Malt', potential:292, ebc:22.6, origin:'Australia (Powells Craft Malt, TAS)', desc:'Rich malty character from Tasmanian-grown barley'},
+  {name:'Powells Wheat Malt', potential:317, ebc:4.6, origin:'Australia (Powells Craft Malt, TAS)', desc:'Soft, bready Tasmanian wheat malt'},
+  {name:'Powells Rye Malt', potential:300, ebc:8.1, origin:'Australia (Powells Craft Malt, TAS)', desc:'Spicy rye character, Tasmanian-grown'},
+  {name:'Sorghum Malt', potential:300, ebc:4.1, origin:'Grouse Malt House (Australia)', desc:'Mild, slightly tangy — the most common gluten-free brewing base malt'},
+  {name:'Millet Malt', potential:292, ebc:4.1, origin:'Grouse Malt House (Australia)', desc:'Light, neutral, slightly sweet — versatile gluten-free base malt'},
+  {name:'Buckwheat Malt', potential:250, ebc:6.7, origin:'Grouse Malt House (Australia)', desc:'Nutty, earthy gluten-free pseudo-cereal character, husk-free'},
+  {name:'Quinoa Malt', potential:250, ebc:6.7, origin:'Grouse Malt House (Australia)', desc:'Light nutty flavour, gluten-free pseudo-cereal that adds protein and body'},
+  {name:'Chestnut Malt', potential:250, ebc:38.5, origin:'Grouse Malt House (Australia)', desc:'Rich, nutty-sweet — used in dark gluten-free beers'},
+  {name:'Rice Malt', potential:317, ebc:1.4, origin:'Various (GF specialty maltsters)', desc:'Very neutral, lightens body — common gluten-free lager base'},
+  {name:'Teff Malt', potential:275, ebc:9.4, origin:'Various (GF specialty maltsters)', desc:'Earthy, slightly sweet gluten-free Ethiopian grain, used in specialty GF beers'},
+];
+
+const HOP_DB = [
+  {name:'Cascade', aa:6.5, type:'Dual', origin:'USA', desc:'Grapefruit and floral citrus — defining American pale ale hop'},
+  {name:'Centennial', aa:10, type:'Dual', origin:'USA', desc:'Bold citrus and floral, sometimes called \'super Cascade\''},
+  {name:'Chinook', aa:12, type:'Dual', origin:'USA', desc:'Piney, resinous, with grapefruit and a hint of spice'},
+  {name:'Citra', aa:12.5, type:'Dual', origin:'USA', desc:'Intense tropical fruit, mango and passionfruit aromatics'},
+  {name:'Simcoe', aa:13, type:'Dual', origin:'USA', desc:'Passionfruit and pine, with a distinct earthy/catty edge'},
+  {name:'Amarillo', aa:9, type:'Aroma', origin:'USA', desc:'Bright orange and citrus with light floral notes'},
+  {name:'Mosaic', aa:11.5, type:'Dual', origin:'USA', desc:'Complex blueberry, tropical fruit and pine character'},
+  {name:'Columbus (CTZ)', aa:15, type:'Bittering', origin:'USA', desc:'Pungent, resinous, high-alpha bittering hop'},
+  {name:'Nugget', aa:13, type:'Bittering', origin:'USA', desc:'Herbal, slightly spicy clean bittering hop'},
+  {name:'Willamette', aa:5, type:'Aroma', origin:'USA', desc:'Mild, earthy, floral English-type aroma hop'},
+  {name:'Cluster', aa:7, type:'Bittering', origin:'USA', desc:'Fruity, mild bittering hop, historic American variety'},
+  {name:'Galena', aa:13, type:'Bittering', origin:'USA', desc:'Neutral, clean high-alpha bittering hop'},
+  {name:'Warrior', aa:16, type:'Bittering', origin:'USA', desc:'Smooth, clean high-alpha bittering with light citrus'},
+  {name:'Summit', aa:17, type:'Bittering', origin:'USA', desc:'Intense tangerine/grapefruit with very high alpha acid'},
+  {name:'Northern Brewer', aa:9, type:'Dual', origin:'USA/Germany', desc:'Woody, minty, resinous with a hint of mint'},
+  {name:'Liberty', aa:4.5, type:'Aroma', origin:'USA', desc:'Mild, spicy, Hallertau-derived aroma hop'},
+  {name:'Crystal', aa:4, type:'Aroma', origin:'USA', desc:'Mild, spicy, floral — good all-purpose aroma hop'},
+  {name:'Mt. Hood', aa:5.5, type:'Aroma', origin:'USA', desc:'Mild, clean, spicy noble-type character'},
+  {name:'Ahtanum', aa:6, type:'Aroma', origin:'USA', desc:'Citrusy, floral, similar profile to Cascade'},
+  {name:'El Dorado', aa:15, type:'Dual', origin:'USA', desc:'Tropical fruit — watermelon, pear, stone fruit'},
+  {name:'Idaho 7', aa:12.5, type:'Dual', origin:'USA', desc:'Tangerine, pine and melon with a hint of onion/garlic'},
+  {name:'Sabro', aa:15, type:'Dual', origin:'USA', desc:'Coconut, tropical fruit and tangerine — distinctive character'},
+  {name:'Strata', aa:12.5, type:'Dual', origin:'USA', desc:'Intense dank tropical fruit and cannabis-like aroma'},
+  {name:'Azacca', aa:15, type:'Dual', origin:'USA', desc:'Tropical mango and citrus, punchy aroma'},
+  {name:'Comet', aa:10, type:'Dual', origin:'USA', desc:'Bold grapefruit and blackcurrant character'},
+  {name:'Vic Secret', aa:16, type:'Dual', origin:'Australia', desc:'Pineapple, passionfruit and pine — modern Aussie hop'},
+  {name:'Zeus', aa:15, type:'Bittering', origin:'USA', desc:'Pungent, earthy, high-alpha clean bittering'},
+  {name:'East Kent Golding', aa:5, type:'Aroma', origin:'England', desc:'Delicate, honeyed, earthy — classic English bitter hop'},
+  {name:'Fuggle', aa:4.5, type:'Aroma', origin:'England', desc:'Mild, woody, earthy — traditional English ale hop'},
+  {name:'Target', aa:10.5, type:'Dual', origin:'England', desc:'Sage-like, herbal, robust bittering with some fruitiness'},
+  {name:'Challenger', aa:7.5, type:'Dual', origin:'England', desc:'Spicy, herbal, mild fruit character'},
+  {name:'Bramling Cross', aa:6, type:'Aroma', origin:'England', desc:'Blackcurrant and spice, distinctive fruity English hop'},
+  {name:'Progress', aa:6, type:'Aroma', origin:'England', desc:'Mild, floral, Goldings-like character'},
+  {name:'Pilgrim', aa:9.5, type:'Dual', origin:'England', desc:'Fruity, slightly citrus with earthy undertones'},
+  {name:'First Gold', aa:8, type:'Dual', origin:'England', desc:'Marmalade-like citrus with spicy Goldings character'},
+  {name:'Hallertau Mittelfrüh', aa:4, type:'Aroma', origin:'Germany', desc:'Classic noble hop — mild, herbal, floral'},
+  {name:'Hallertau Blanc', aa:10, type:'Aroma', origin:'Germany', desc:'Wine-like, gooseberry and passionfruit character'},
+  {name:'Tettnang', aa:4.5, type:'Aroma', origin:'Germany', desc:'Spicy, herbal noble hop, softer than Saaz'},
+  {name:'Spalt', aa:5, type:'Aroma', origin:'Germany', desc:'Delicate spicy, slightly floral noble hop'},
+  {name:'Perle', aa:8, type:'Dual', origin:'Germany', desc:'Minty, floral, clean bittering with noble character'},
+  {name:'Hersbrucker', aa:4, type:'Aroma', origin:'Germany', desc:'Mild floral, herbal noble hop'},
+  {name:'Magnum', aa:14, type:'Bittering', origin:'Germany', desc:'Very clean, neutral high-alpha bittering hop'},
+  {name:'Hallertau Tradition', aa:6, type:'Dual', origin:'Germany', desc:'Mild spicy noble character, versatile'},
+  {name:'Opal', aa:8, type:'Aroma', origin:'Germany', desc:'Fruity, mild spice with citrus undertones'},
+  {name:'Mandarina Bavaria', aa:8, type:'Aroma', origin:'Germany', desc:'Bright tangerine and citrus aroma'},
+  {name:'Huell Melon', aa:7, type:'Aroma', origin:'Germany', desc:'Honeydew melon and strawberry notes'},
+  {name:'Polaris', aa:20, type:'Bittering', origin:'Germany', desc:'Very high alpha with a cooling, minty character'},
+  {name:'Saaz', aa:3.5, type:'Aroma', origin:'Czechia', desc:'The classic noble hop — spicy, earthy, mildly floral'},
+  {name:'Nelson Sauvin', aa:12, type:'Aroma', origin:'New Zealand', desc:'Intense white wine, gooseberry and passionfruit'},
+  {name:'Motueka', aa:7, type:'Aroma', origin:'New Zealand', desc:'Lime and tropical fruit, similar to Saaz lineage'},
+  {name:'Riwaka', aa:5.5, type:'Aroma', origin:'New Zealand', desc:'Intense passionfruit and citrus punch'},
+  {name:'Wai-iti', aa:3, type:'Aroma', origin:'New Zealand', desc:'Delicate lime and sherbet character'},
+  {name:'Rakau', aa:11.5, type:'Dual', origin:'New Zealand', desc:'Passionfruit, citrus and pine, robust aroma'},
+  {name:'Galaxy', aa:14, type:'Dual', origin:'Australia', desc:'Intense passionfruit and peach — flagship Aussie hop'},
+  {name:'Enigma', aa:17, type:'Dual', origin:'Australia', desc:'Berry, stone fruit and Belgian-yeast-like fruitiness'},
+  {name:'Ella', aa:15, type:'Dual', origin:'Australia', desc:'Spicy, floral, mint and stone fruit character'},
+  {name:'Topaz', aa:17, type:'Bittering', origin:'Australia', desc:'Tropical fruit and blackcurrant, high alpha'},
+  {name:'Summer', aa:5, type:'Aroma', origin:'Australia', desc:'Mild lemon and herbal, food-friendly aroma hop'},  {name:'Pride of Ringwood', aa:9, type:'Bittering', origin:'Australia (Tasmania)', desc:'Historic Aussie bittering hop, clean and neutral — the backbone of classic Australian lagers'},
+  {name:'Dr Rudi', aa:8.5, type:'Dual', origin:'Australia (Tasmania)', desc:'Noble-style aroma with a clean, mild spiciness'},
+  {name:'Melba', aa:6, type:'Aroma', origin:'Australia (Tasmania)', desc:'Delicate florals with light citrus and stone fruit'},
+  {name:'Eclipse', aa:16, type:'Dual', origin:'Australia (Tasmania)', desc:'Subtle pine and tropical fruit with high alpha acid'},
+  {name:'Astra', aa:14, type:'Dual', origin:'Australia (Tasmania)', desc:'Tropical fruit with a pine backbone, modern HPA release'},
+  {name:'Sylva', aa:13, type:'Dual', origin:'Australia (Tasmania)', desc:'Citrus and pine, versatile modern Australian hop'},
+  {name:'Helga', aa:4.5, type:'Aroma', origin:'Australia (Tasmania)', desc:'Spicy, floral aroma hop with a gentle noble character'},
+];
+
+const YEAST_DB = [
+  {name:'US-05 (American Ale)', atten:78, tempLow:16, tempHigh:22, origin:'Fermentis (USA-style)', desc:'Clean, neutral, crisp — the standard American ale workhorse'},
+  {name:'S-04 (English Ale)', atten:74, tempLow:15, tempHigh:24, origin:'Fermentis (UK-style)', desc:'Fast-fermenting, fruity ester profile, flocculates well'},
+  {name:'S-33 (Ale)', atten:74, tempLow:15, tempHigh:24, origin:'Fermentis', desc:'Neutral, versatile, mild fruitiness across many ale styles'},
+  {name:'T-58 (Abbey Ale)', atten:75, tempLow:20, tempHigh:27, origin:'Fermentis (Belgian-style)', desc:'Spicy phenolics and fruity esters for Belgian ales'},
+  {name:'BE-134 (Saison)', atten:82, tempLow:18, tempHigh:26, origin:'Fermentis (Belgian-style)', desc:'Peppery, fruity, very dry finish — classic saison character'},
+  {name:'WB-06 (Wheat)', atten:78, tempLow:18, tempHigh:24, origin:'Fermentis (German-style)', desc:'Banana and clove phenolics for German wheat beers'},
+  {name:'K-97 (German Ale)', atten:78, tempLow:15, tempHigh:24, origin:'Fermentis (German-style)', desc:'Clean, fast fermenting, good for German-style ales'},
+  {name:'W-34/70 (Lager)', atten:82, tempLow:9, tempHigh:15, origin:'Fermentis (German-style)', desc:'Clean, crisp, the standard workhorse lager strain'},
+  {name:'M54 (Californian Lager)', atten:74, tempLow:15, tempHigh:20, origin:'Mangrove Jack\'s (NZ)', desc:'Clean lager character that tolerates warmer ale temps'},
+  {name:'WLP001 (California Ale)', atten:76, tempLow:20, tempHigh:23, origin:'White Labs (USA)', desc:'Clean, crisp, slightly fruity — versatile American ale strain'},
+  {name:'WLP002 (English Ale)', atten:68, tempLow:18, tempHigh:20, origin:'White Labs (UK-style)', desc:'Malty, fruity, low attenuation, leaves body and sweetness'},
+  {name:'WLP004 (Irish Ale)', atten:72, tempLow:18, tempHigh:21, origin:'White Labs (Irish-style)', desc:'Slightly tart, clean, well suited to stouts'},
+  {name:'WLP005 (British Ale)', atten:71, tempLow:18, tempHigh:21, origin:'White Labs (UK-style)', desc:'Malty, nutty, well-balanced English character'},
+  {name:'WLP007 (Dry English Ale)', atten:78, tempLow:18, tempHigh:21, origin:'White Labs (UK-style)', desc:'Dry finish, crisp, good attenuation for English styles'},
+  {name:'WLP008 (East Coast Ale)', atten:74, tempLow:20, tempHigh:24, origin:'White Labs (USA)', desc:'Clean, mild fruitiness, versatile American ale strain'},
+  {name:'WLP029 (German Ale / Kölsch)', atten:74, tempLow:18, tempHigh:21, origin:'White Labs (German-style)', desc:'Crisp, clean, subtle fruit — true to style Kölsch'},
+  {name:'WLP036 (Düsseldorf Alt)', atten:72, tempLow:18, tempHigh:21, origin:'White Labs (German-style)', desc:'Clean, slightly fruity, classic Alt character'},
+  {name:'WLP300 (Hefeweizen Ale)', atten:74, tempLow:20, tempHigh:22, origin:'White Labs (German-style)', desc:'Banana and clove, classic Bavarian wheat beer'},
+  {name:'WLP400 (Belgian Wit Ale)', atten:74, tempLow:19, tempHigh:23, origin:'White Labs (Belgian-style)', desc:'Spicy, tart, citrusy — classic witbier character'},
+  {name:'WLP500 (Trappist Ale)', atten:78, tempLow:18, tempHigh:22, origin:'White Labs (Belgian-style)', desc:'Spicy, fruity, dry — Trappist ale character'},
+  {name:'WLP530 (Abbey Ale)', atten:78, tempLow:19, tempHigh:22, origin:'White Labs (Belgian-style)', desc:'Fruity esters, peppery phenolics for abbey ales'},
+  {name:'WLP550 (Belgian Ale)', atten:78, tempLow:18, tempHigh:24, origin:'White Labs (Belgian-style)', desc:'Spicy, complex, classic Belgian ale profile'},
+  {name:'WLP565 (Belgian Saison I)', atten:74, tempLow:20, tempHigh:24, origin:'White Labs (Belgian-style)', desc:'Peppery, earthy, dry — classic farmhouse character'},
+  {name:'WLP570 (Belgian Golden Ale)', atten:78, tempLow:21, tempHigh:27, origin:'White Labs (Belgian-style)', desc:'Fruity and spicy with a very dry finish'},
+  {name:'WLP800 (Pilsner Lager)', atten:74, tempLow:10, tempHigh:13, origin:'White Labs (German-style)', desc:'Clean, malty, classic German pilsner character'},
+  {name:'WLP802 (Czech Budejovice Lager)', atten:73, tempLow:10, tempHigh:14, origin:'White Labs (Czech-style)', desc:'Malty, slightly sulfury, traditional Czech lager'},
+  {name:'WLP830 (German Lager)', atten:74, tempLow:10, tempHigh:13, origin:'White Labs (German-style)', desc:'Clean, crisp, well-rounded lager character'},
+  {name:'WLP833 (German Bock Lager)', atten:72, tempLow:10, tempHigh:13, origin:'White Labs (German-style)', desc:'Rich, malty, smooth — suited to strong lagers'},
+  {name:'WLP940 (Mexican Lager)', atten:70, tempLow:14, tempHigh:18, origin:'White Labs (Mexican-style)', desc:'Clean, crisp, ferments warmer than typical lager yeast'},
+  {name:'Wyeast 1056 (American Ale)', atten:75, tempLow:16, tempHigh:22, origin:'Wyeast (USA)', desc:'Clean, neutral, the American ale benchmark'},
+  {name:'Wyeast 1084 (Irish Ale)', atten:71, tempLow:17, tempHigh:22, origin:'Wyeast (Irish-style)', desc:'Soft, smooth, well suited to stouts'},
+  {name:'Wyeast 1098 (British Ale)', atten:73, tempLow:18, tempHigh:22, origin:'Wyeast (UK-style)', desc:'Balanced malt and fruit, classic British character'},
+  {name:'Wyeast 1187 (Ringwood Ale)', atten:72, tempLow:18, tempHigh:23, origin:'Wyeast (UK-style)', desc:'Fruity, quick-fermenting, distinctive English character'},
+  {name:'Wyeast 1214 (Belgian Abbey)', atten:78, tempLow:18, tempHigh:23, origin:'Wyeast (Belgian-style)', desc:'Spicy, fruity, dry Trappist-style character'},
+  {name:'Wyeast 1272 (American Ale II)', atten:72, tempLow:16, tempHigh:22, origin:'Wyeast (USA)', desc:'Slightly fruitier and less flocculent than 1056'},
+  {name:'Wyeast 1318 (London Ale III)', atten:71, tempLow:18, tempHigh:23, origin:'Wyeast (UK-style)', desc:'Fruity, soft, great for hazy/NEIPA styles'},
+  {name:'Wyeast 1335 (British Ale II)', atten:72, tempLow:18, tempHigh:21, origin:'Wyeast (UK-style)', desc:'Malty, balanced, clean English fermentation'},
+  {name:'Wyeast 1450 (Denny\'s Favorite)', atten:74, tempLow:18, tempHigh:24, origin:'Wyeast (USA)', desc:'Clean, well-attenuating, versatile American strain'},
+  {name:'Wyeast 1728 (Scottish Ale)', atten:71, tempLow:13, tempHigh:24, origin:'Wyeast (Scottish-style)', desc:'Malty, smooth, low ester — good for Scotch ales'},
+  {name:'Wyeast 1762 (Belgian Abbey II)', atten:76, tempLow:18, tempHigh:26, origin:'Wyeast (Belgian-style)', desc:'Rich fruity esters, classic dubbel/tripel character'},
+  {name:'Wyeast 2007 (Pilsen Lager)', atten:74, tempLow:9, tempHigh:14, origin:'Wyeast (German-style)', desc:'Clean, malty, classic pilsner lager character'},
+  {name:'Wyeast 2124 (Bohemian Lager)', atten:73, tempLow:9, tempHigh:14, origin:'Wyeast (Czech-style)', desc:'Rich, malty, traditional Bohemian lager profile'},
+  {name:'Wyeast 2206 (Bavarian Lager)', atten:74, tempLow:9, tempHigh:14, origin:'Wyeast (German-style)', desc:'Clean, rounded, classic Bavarian lager character'},
+  {name:'Wyeast 2278 (Czech Pils)', atten:71, tempLow:9, tempHigh:14, origin:'Wyeast (Czech-style)', desc:'Slightly sulfury, malty, traditional Czech pils'},
+  {name:'Wyeast 2565 (Kölsch)', atten:72, tempLow:13, tempHigh:21, origin:'Wyeast (German-style)', desc:'Crisp, clean, subtle fruit — true Kölsch character'},
+  {name:'Wyeast 3068 (Weihenstephan Wheat)', atten:73, tempLow:18, tempHigh:24, origin:'Wyeast (German-style)', desc:'Classic banana and clove Bavarian wheat character'},
+  {name:'Wyeast 3711 (French Saison)', atten:85, tempLow:18, tempHigh:25, origin:'Wyeast (French-style)', desc:'Very dry, peppery, fast-fermenting saison strain'},
+  {name:'Wyeast 3724 (Belgian Saison)', atten:80, tempLow:21, tempHigh:35, origin:'Wyeast (Belgian-style)', desc:'Peppery, earthy, notoriously can stall without heat'},
+  {name:'Wyeast 3787 (Trappist High Gravity)', atten:78, tempLow:18, tempHigh:26, origin:'Wyeast (Belgian-style)', desc:'Rich, fruity, built for strong Trappist ales'},
+  {name:'Coopers Ale Yeast', atten:73, tempLow:18, tempHigh:27, origin:'Coopers Brewery (Australia)', desc:'The classic Aussie bottle-conditioning strain — slightly tart, fruity, very temperature tolerant'},
+  {name:'Mangrove Jack\'s M42 (New World Strong Ale)', atten:73, tempLow:18, tempHigh:28, origin:'Mangrove Jack\'s (Australia/NZ)', desc:'Fruity, robust strain suited to strong Aussie-style pale ales'},
+  {name:'Mangrove Jack\'s M44 (US West Coast)', atten:75, tempLow:18, tempHigh:26, origin:'Mangrove Jack\'s (Australia/NZ)', desc:'Clean, crisp, reliable workhorse for American-style ales'},
+  {name:'LalBrew Nottingham', atten:80, tempLow:12, tempHigh:25, origin:'Lallemand (Canada)', desc:'Clean, crisp, high-attenuating — the most widely used dry ale yeast in craft brewing'},
+  {name:'LalBrew London ESB', atten:73, tempLow:15, tempHigh:24, origin:'Lallemand (Canada)', desc:'Malty, fruity English ale character with balanced esters'},
+  {name:'LalBrew Windsor', atten:68, tempLow:15, tempHigh:24, origin:'Lallemand (Canada)', desc:'Low attenuation, malty and fruity — leaves body and sweetness'},
+  {name:'LalBrew New England', atten:76, tempLow:17, tempHigh:22, origin:'Lallemand (Canada)', desc:'Fruity esters and low flocculation — built for hazy/NEIPA styles'},
+  {name:'LalBrew Verdant IPA', atten:76, tempLow:18, tempHigh:23, origin:'Lallemand (Canada)', desc:'Stone fruit and citrus esters with a soft, juicy mouthfeel'},
+  {name:'LalBrew BRY-97', atten:77, tempLow:15, tempHigh:24, origin:'Lallemand (Canada)', desc:'Neutral, clean American ale character with minimal esters'},
+  {name:'LalBrew Belle Saison', atten:84, tempLow:15, tempHigh:35, origin:'Lallemand (Canada)', desc:'Extremely dry, peppery and fruity — true saison character even fermented warm'},
+  {name:'LalBrew Farmhouse', atten:82, tempLow:18, tempHigh:30, origin:'Lallemand (Canada)', desc:'Fruity, tart, rustic French farmhouse ale character'},
+  {name:'LalBrew Abbaye', atten:76, tempLow:15, tempHigh:22, origin:'Lallemand (Canada)', desc:'Fruity esters and mild spice, classic Belgian abbey character'},
+  {name:'LalBrew Munich Classic', atten:75, tempLow:18, tempHigh:22, origin:'Lallemand (Canada)', desc:'Banana and clove phenolics, classic Bavarian wheat beer strain'},
+  {name:'LalBrew Wit', atten:77, tempLow:18, tempHigh:22, origin:'Lallemand (Canada)', desc:'Spicy, citrusy phenolics suited to Belgian witbier'},
+  {name:'LalBrew Voss Kveik', atten:77, tempLow:25, tempHigh:40, origin:'Lallemand (Canada) — Norwegian kveik strain', desc:'Citrus and orange notes, ferments extremely fast even at high temperatures'},
+  {name:'LalBrew Diamond Lager', atten:75, tempLow:12, tempHigh:22, origin:'Lallemand (Canada)', desc:'Versatile, clean lager strain tolerant of a wide fermentation range'},
+  {name:'LalBrew Nova', atten:84, tempLow:12, tempHigh:25, origin:'Lallemand (Canada)', desc:'Fast-fermenting lager yeast with very clean character and high attenuation'},
+  {name:'LalBrew CBC-1', atten:80, tempLow:15, tempHigh:24, origin:'Lallemand (Canada)', desc:'Neutral bottle/cask conditioning strain, highly alcohol and pressure tolerant'},
+];
+
+
+function buildDatalists(){
+  const mk = (id, arr) => `<datalist id="${id}">${arr.map(x=>`<option value="${escapeAttr(x.name)}">`).join('')}</datalist>`;
+  const holder = document.createElement('div');
+  holder.innerHTML = mk('fermentable-list', FERMENTABLE_DB) + mk('hop-list', HOP_DB) + mk('yeast-list', YEAST_DB) + mk('style-list', STYLE_DB);
+  document.body.appendChild(holder);
+}
+
+function handleFermNameInput(i, val){
+  window._editingFerms[i].name = val;
+  const match = FERMENTABLE_DB.find(f=>f.name.toLowerCase()===val.toLowerCase());
+  const hintEl = document.getElementById('ferm-hint-'+i);
+  if(match){
+    window._editingFerms[i].potential = match.potential;
+    window._editingFerms[i].ebc = match.ebc;
+    const potEl = document.getElementById('ferm-pot-'+i);
+    const ebcEl = document.getElementById('ferm-ebc-'+i);
+    if(potEl) potEl.value = match.potential;
+    if(ebcEl) ebcEl.value = match.ebc;
+    if(hintEl) hintEl.textContent = match.origin + ' — ' + match.desc;
+  } else if(hintEl){ hintEl.textContent = ''; }
+  recalc();
+}
+function handleHopNameInput(i, val){
+  window._editingHops[i].name = val;
+  const match = HOP_DB.find(h=>h.name.toLowerCase()===val.toLowerCase());
+  const hintEl = document.getElementById('hop-hint-'+i);
+  if(match){
+    window._editingHops[i].aa = match.aa;
+    const aaEl = document.getElementById('hop-aa-'+i);
+    if(aaEl) aaEl.value = match.aa;
+    if(hintEl) hintEl.textContent = match.origin + ' — ' + match.desc;
+  } else if(hintEl){ hintEl.textContent = ''; }
+  recalc();
+}
+function handleYeastInput(val){
+  const match = YEAST_DB.find(y=>y.name.toLowerCase()===val.toLowerCase());
+  const hintEl = document.getElementById('yeast-hint');
+  if(match){
+    document.getElementById('r-atten').value = match.atten;
+    document.getElementById('r-fermtemp').value = Math.round((match.tempLow+match.tempHigh)/2);
+    if(hintEl) hintEl.textContent = match.origin + ' — ' + match.desc;
+  } else if(hintEl){ hintEl.textContent = ''; }
+  recalc();
+}
+
+function renderLibraryTable(type){
+  const dbMap = {ferm: FERMENTABLE_DB, hop: HOP_DB, yeast: YEAST_DB};
+  const bodyMap = {ferm:'lib-ferm-body', hop:'lib-hop-body', yeast:'lib-yeast-body'};
+  const countMap = {ferm:'ferm-count', hop:'hop-count', yeast:'yeast-count'};
+  const q = ((window._libFilter && window._libFilter[type]) || '').toLowerCase().replace(/-/g,' ');
+  const norm = s => (s||'').toLowerCase().replace(/-/g,' ');
+  const list = dbMap[type].filter(x=> norm(x.name).includes(q) || norm(x.desc).includes(q) || norm(x.origin).includes(q));
+  document.getElementById(countMap[type]).textContent = list.length;
+  let rows;
+  if(type==='ferm'){
+    rows = list.map(f=>`<tr><td>${f.name}</td><td>${f.potential}</td><td>${f.ebc}</td><td>${f.origin}</td><td>${f.desc}</td></tr>`).join('');
+  } else if(type==='hop'){
+    rows = list.map(h=>`<tr><td>${h.name}</td><td>${h.aa}%</td><td>${h.type}</td><td>${h.origin}</td><td>${h.desc}</td></tr>`).join('');
+  } else {
+    rows = list.map(y=>`<tr><td>${y.name}</td><td>${y.atten}%</td><td>${y.tempLow}–${y.tempHigh} °C</td><td>${y.origin}</td><td>${y.desc}</td></tr>`).join('');
+  }
+  document.getElementById(bodyMap[type]).innerHTML = rows || `<tr><td colspan="5" style="color:var(--foam-dim);">No matches.</td></tr>`;
+}
+function filterLibrary(type, val){
+  window._libFilter = window._libFilter || {};
+  window._libFilter[type] = val;
+  renderLibraryTable(type);
+}
+
+/* ---------------------------------------------------------------------
+   NAV
+--------------------------------------------------------------------- */
+const NAV_ITEMS = [
+  {id:'dashboard', label:'Dashboard', glyph:'D'},
+  {id:'recipes', label:'Recipes', glyph:'R'},
+  {id:'ingredients', label:'Ingredient library', glyph:'L'},
+  {id:'calc', label:'Calculators', glyph:'C'},
+  {id:'sales', label:'Sales & Costing', glyph:'$'},
+  {id:'equipment', label:'Equipment & data', glyph:'E'},
+  {id:'inventory', label:'Inventory', glyph:'I'},
+  {id:'ferment', label:'Fermentation log', glyph:'F'},
+];
+function renderNav(){
+  const nav = document.getElementById('nav');
+  nav.innerHTML = NAV_ITEMS.map(i=>`<button class="nav-btn" data-view="${i.id}" onclick="showView('${i.id}')"><span class="glyph">${i.glyph}</span>${i.label}</button>`).join('');
+}
+function showView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+id).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===id));
+  if(id==='recipes') renderRecipeGrid();
+  if(id==='ferment'){ renderBatchGrid(); document.getElementById('batch-detail').style.display='none'; populateCompareSelects(); }
+  if(id==='inventory') renderInventory();
+  if(id==='ingredients'){ renderLibraryTable('ferm'); renderLibraryTable('hop'); renderLibraryTable('yeast'); }
+  if(id==='sales'){ populateSalesRecipeSelect(); calcSalesCosting(); }
+  if(id==='equipment'){
+    renderEquipmentList();
+    const cfg = getFirebaseConfig();
+    const inputEl = document.getElementById('firebase-config-input');
+    if(inputEl && cfg && !inputEl.value) inputEl.value = JSON.stringify(cfg, null, 2);
+  }
+  if(id==='dashboard'){ renderDashboard(); }
+  if(id==='sales'){ populateSalesRecipeSelect(); calcSalesCosting(); }
+}
+
+/* ---------------------------------------------------------------------
+   BREWING MATH (metric)
+--------------------------------------------------------------------- */
+function abv(og, fg){ return (og - fg) * 131.25; }
+
+function estimateOG(ferms, batchL, eff){
+  const points = ferms.reduce((sum,f)=> sum + (parseFloat(f.amount)||0) * (parseFloat(f.potential)||0) * (eff/100), 0);
+  const gu = batchL>0 ? points/batchL : 0;
+  return 1 + gu/1000;
+}
+function estimateFG(og, attenPct){
+  const gu = (og-1)*1000;
+  return 1 + gu*(1-attenPct/100)/1000;
+}
+function estimateEBC(ferms, batchL){
+  // internally uses Morey SRM formula (imperial units) then converts to EBC, for accuracy
+  const batchGal = batchL * 0.264172;
+  const mcu = ferms.reduce((sum,f)=>{
+    const weightLb = (parseFloat(f.amount)||0) * 2.20462;
+    const lovibond = ((parseFloat(f.ebc)||0) + 1.2) / 2.65;
+    return sum + weightLb*lovibond;
+  }, 0) / (batchGal||1);
+  const srm = 1.4922 * Math.pow(mcu, 0.6859) || 0;
+  return srm * 1.97;
+}
+function estimateIBU(hops, og, batchL, boilTime){
+  return hops.reduce((total,h)=>{
+    const aa = parseFloat(h.aa)||0;
+    const grams = parseFloat(h.amount)||0;
+    const time = h.use==='dry hop' ? 0 : (parseFloat(h.time)||0);
+    if(time<=0 || aa<=0 || grams<=0) return total;
+    const bigness = 1.65 * Math.pow(0.000125, og-1);
+    const boilFactor = (1 - Math.exp(-0.04 * time)) / 4.15;
+    const util = bigness * boilFactor;
+    const mgL = (aa/100) * grams * 1000 / (batchL||1);
+    return total + mgL*util;
+  }, 0);
+}
+function ebcToHex(ebc){
+  const stops = [
+    [0,'#F3F993'],[4,'#F5F75C'],[8,'#F6BC49'],[12,'#EBA831'],[16,'#DE9214'],
+    [20,'#D07A0C'],[26,'#BB6716'],[33,'#A75B14'],[39,'#8F4B0E'],[47,'#743706'],
+    [57,'#5D2C08'],[69,'#3D1B06'],[79,'#1E0E03']
+  ];
+  let e = Math.max(0, Math.min(79, ebc||0));
+  for(let i=0;i<stops.length-1;i++){
+    if(e>=stops[i][0] && e<=stops[i+1][0]) return stops[i][1];
+  }
+  return stops[stops.length-1][1];
+}
+
+/* ---------------------------------------------------------------------
+   RECIPES: grid + editor
+--------------------------------------------------------------------- */
+function renderRecipeGrid(){
+  const grid = document.getElementById('recipe-grid');
+  if(state.recipes.length===0){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="glyph-lg">◎</div>No recipes yet. Start your first brew sheet.</div>`;
+    return;
+  }
+  const searchEl = document.getElementById('recipe-search');
+  const q = (searchEl ? searchEl.value : '').toLowerCase().trim();
+  const filtered = q ? state.recipes.filter(r=> (r.name||'').toLowerCase().includes(q) || (r.style||'').toLowerCase().includes(q)) : state.recipes;
+  if(filtered.length===0){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No recipes match "${escapeHtml(q)}".</div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(r=>{
+    const og = estimateOG(r.fermentables, r.batchSize, r.efficiency);
+    const fg = estimateFG(og, r.attenuation);
+    const ibu = estimateIBU(r.hops, og, r.batchSize, r.boilTime);
+    const ebc = estimateEBC(r.fermentables, r.batchSize);
+    return `<div class="recipe-card" onclick="openRecipeEditor('${r.id}')">
+      <button class="icon-btn" style="position:absolute;top:14px;left:14px;" title="Print brew sheet" onclick="event.stopPropagation();printBrewSheet('${r.id}')">🖶</button>
+      <div class="batch-stamp">${(r.name||'—').slice(0,4).toUpperCase()}</div>
+      <h3>${escapeHtml(r.name)||'Untitled recipe'}</h3>
+      <div class="style">${escapeHtml(r.style)||'No style set'}</div>
+      <div class="mini-stats">
+        <span>OG <b>${og.toFixed(3)}</b></span>
+        <span>ABV <b>${abv(og,fg).toFixed(1)}%</b></span>
+        <span>IBU <b>${ibu.toFixed(0)}</b></span>
+        <span>EBC <b>${ebc.toFixed(0)}</b><span class="srm-swatch" style="background:${ebcToHex(ebc)}"></span></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function blankRecipe(){
+  return { id: uid(), name:'', style:'', equipmentId:'', batchSize:19, boilTime:60, efficiency:72, attenuation:75,
+    fermentables:[], hops:[], mashSteps:[], labels:[], yeast:'', yeastCost:0, fermTemp:'', notes:'' };
+}
+
+function openRecipeEditor(id){
+  currentRecipeId = id || null;
+  const r = id ? state.recipes.find(x=>x.id===id) : blankRecipe();
+  if(!r) return;
+  document.getElementById('r-name').value = r.name||'';
+  document.getElementById('r-style').value = r.style||'';
+  document.getElementById('r-equipment').value = r.equipmentId||'';
+  document.getElementById('r-batch').value = r.batchSize||19;
+  document.getElementById('r-boil').value = r.boilTime||60;
+  document.getElementById('r-eff').value = r.efficiency||72;
+  document.getElementById('r-atten').value = r.attenuation||75;
+  document.getElementById('r-yeast').value = r.yeast||'';
+  document.getElementById('r-yeastcost').value = r.yeastCost||0;
+  document.getElementById('r-fermtemp').value = r.fermTemp||'';
+  document.getElementById('r-notes').value = r.notes||'';
+  window._editingFerms = JSON.parse(JSON.stringify(r.fermentables||[]));
+  window._editingHops = JSON.parse(JSON.stringify(r.hops||[]));
+  window._editingMash = JSON.parse(JSON.stringify(r.mashSteps||[]));
+  window._editingLabels = JSON.parse(JSON.stringify(r.labels||[]));
+  renderFermTable();
+  renderHopTable();
+  renderMashTable();
+  renderLabelAttachments();
+  recalc();
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-editor').classList.add('active');
+}
+
+function addFermentable(){ window._editingFerms.push({name:'', amount:0, ebc:8, potential:300, cost:0}); renderFermTable(); }
+function removeFermentable(idx){ window._editingFerms.splice(idx,1); renderFermTable(); recalc(); }
+function renderFermTable(){
+  const body = document.getElementById('ferm-body');
+  body.innerHTML = window._editingFerms.map((f,i)=>`
+    <tr>
+      <td>
+        <input list="fermentable-list" value="${escapeAttr(f.name)}" oninput="handleFermNameInput(${i}, this.value)">
+        <div class="db-hint" id="ferm-hint-${i}"></div>
+      </td>
+      <td><input type="number" step="0.05" value="${f.amount}" oninput="window._editingFerms[${i}].amount=this.value;recalc()"></td>
+      <td><input id="ferm-ebc-${i}" type="number" step="0.5" value="${f.ebc}" oninput="window._editingFerms[${i}].ebc=this.value;recalc()"></td>
+      <td><input id="ferm-pot-${i}" type="number" step="1" value="${f.potential}" oninput="window._editingFerms[${i}].potential=this.value;recalc()"></td>
+      <td><input type="number" step="0.5" value="${f.cost||0}" oninput="window._editingFerms[${i}].cost=this.value;recalc()"></td>
+      <td><button class="icon-btn" onclick="removeFermentable(${i})">✕</button></td>
+    </tr>`).join('') || `<tr><td colspan="6" style="color:var(--foam-dim);">No fermentables yet.</td></tr>`;
+}
+
+function addHop(){ window._editingHops.push({name:'', amount:0, aa:10, time:60, use:'boil', cost:0}); renderHopTable(); }
+function removeHop(idx){ window._editingHops.splice(idx,1); renderHopTable(); recalc(); }
+function renderHopTable(){
+  const body = document.getElementById('hop-body');
+  body.innerHTML = window._editingHops.map((h,i)=>`
+    <tr>
+      <td>
+        <input list="hop-list" value="${escapeAttr(h.name)}" oninput="handleHopNameInput(${i}, this.value)">
+        <div class="db-hint" id="hop-hint-${i}"></div>
+      </td>
+      <td><input type="number" step="1" value="${h.amount}" oninput="window._editingHops[${i}].amount=this.value;recalc()"></td>
+      <td><input id="hop-aa-${i}" type="number" step="0.1" value="${h.aa}" oninput="window._editingHops[${i}].aa=this.value;recalc()"></td>
+      <td><input type="number" step="1" value="${h.time}" oninput="window._editingHops[${i}].time=this.value;recalc()"></td>
+      <td><select onchange="window._editingHops[${i}].use=this.value;recalc()">
+            <option value="boil" ${h.use==='boil'?'selected':''}>Boil</option>
+            <option value="whirlpool" ${h.use==='whirlpool'?'selected':''}>Whirlpool</option>
+            <option value="dry hop" ${h.use==='dry hop'?'selected':''}>Dry hop</option>
+          </select></td>
+      <td><input type="number" step="0.5" value="${h.cost||0}" oninput="window._editingHops[${i}].cost=this.value;recalc()"></td>
+      <td><button class="icon-btn" onclick="removeHop(${i})">✕</button></td>
+    </tr>`).join('') || `<tr><td colspan="7" style="color:var(--foam-dim);">No hops yet.</td></tr>`;
+}
+
+function addMashStep(){ window._editingMash.push({name:'Saccharification', temp:67, time:60}); renderMashTable(); }
+function removeMashStep(idx){ window._editingMash.splice(idx,1); renderMashTable(); }
+function renderMashTable(){
+  const body = document.getElementById('mash-body');
+  body.innerHTML = window._editingMash.map((m,i)=>`
+    <tr>
+      <td><input value="${escapeAttr(m.name)}" oninput="window._editingMash[${i}].name=this.value"></td>
+      <td><input type="number" step="0.5" value="${m.temp}" oninput="window._editingMash[${i}].temp=this.value"></td>
+      <td><input type="number" step="1" value="${m.time}" oninput="window._editingMash[${i}].time=this.value"></td>
+      <td><button class="icon-btn" onclick="removeMashStep(${i})">✕</button></td>
+    </tr>`).join('') || `<tr><td colspan="4" style="color:var(--foam-dim);">No mash steps — using single infusion by default.</td></tr>`;
+}
+
+/* ---------------------------------------------------------------------
+   LABELS & ATTACHMENTS (per recipe) — images auto-compressed client-side
+   before being stored, since these sync as base64 through the same
+   storage backend as everything else and full-size photos would bloat
+   that badly.
+--------------------------------------------------------------------- */
+function toggleCustomCapacity(){
+  const isCustom = document.getElementById('label-capacity').value === 'custom';
+  document.getElementById('label-capacity-custom-wrap').style.display = isCustom ? 'block' : 'none';
+}
+function capacityToMl(capStr){
+  const m = String(capStr).match(/([\d.]+)\s*(m?L)/i);
+  if(!m) return 0;
+  const num = parseFloat(m[1]);
+  return /^m/i.test(m[2]) ? num : num*1000;
+}
+const CONTAINER_ORDER = { 'Can':0, 'Bottle':1, 'Keg':2 };
+
+function compressImageFile(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w=img.width, h=img.height;
+        if(w>maxDim || h>maxDim){
+          if(w>=h){ h = Math.round(h*(maxDim/w)); w = maxDim; }
+          else { w = Math.round(w*(maxDim/h)); h = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = ()=>reject(new Error('Could not read image'));
+      img.src = e.target.result;
+    };
+    reader.onerror = ()=>reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+function readFileAsDataUrl(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = e=>resolve(e.target.result);
+    reader.onerror = ()=>reject(new Error('Could not read file'));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function addLabelAttachment(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const containerType = document.getElementById('label-container-type').value;
+  const capSel = document.getElementById('label-capacity').value;
+  const capacity = capSel==='custom' ? (document.getElementById('label-capacity-custom').value.trim() || 'Custom') : capSel;
+  const isImage = file.type.startsWith('image/');
+  const isPdf = file.type==='application/pdf';
+  if(!isImage && !isPdf){ showToast('Only images and PDFs are supported'); evt.target.value=''; return; }
+
+  try{
+    let dataUrl;
+    if(isImage){
+      dataUrl = await compressImageFile(file, 900, 0.8);
+    } else {
+      if(file.size > 3*1024*1024){ showToast('That PDF is large (>3MB) — it will sync but may be slow. Consider a smaller file.'); }
+      dataUrl = await readFileAsDataUrl(file);
+    }
+    window._editingLabels = window._editingLabels || [];
+    window._editingLabels.push({
+      id: uid(), type: isImage?'image':'pdf', containerType, capacity,
+      fileName: file.name, dataUrl, dateAdded: new Date().toISOString().slice(0,10)
+    });
+    renderLabelAttachments();
+    showToast('Attached — click Save recipe to keep it');
+  }catch(e){
+    showToast('Could not attach that file');
+  }
+  evt.target.value = '';
+}
+function removeLabelAttachment(id){
+  window._editingLabels = (window._editingLabels||[]).filter(x=>x.id!==id);
+  renderLabelAttachments();
+}
+function renderLabelAttachments(){
+  const el = document.getElementById('label-attachments-list');
+  if(!el) return;
+  const labels = window._editingLabels || [];
+  if(labels.length===0){
+    el.innerHTML = `<p class="page-sub" style="margin:0;">No labels or attachments yet.</p>`;
+    return;
+  }
+  const sorted = labels.slice().sort((a,b)=>{
+    const co = (CONTAINER_ORDER[a.containerType]??9) - (CONTAINER_ORDER[b.containerType]??9);
+    if(co!==0) return co;
+    return capacityToMl(a.capacity) - capacityToMl(b.capacity);
+  });
+  let html = '';
+  let currentGroup = null;
+  sorted.forEach(l=>{
+    const group = `${l.containerType} — ${l.capacity}`;
+    if(group !== currentGroup){
+      if(currentGroup!==null) html += `</div>`;
+      html += `<div class="badge" style="margin:${currentGroup===null?'0':'14px'} 0 8px 0;">${escapeHtml(group)}</div><div class="grid cols-4" style="gap:12px;">`;
+      currentGroup = group;
+    }
+    const safeUrl = l.dataUrl.replace(/'/g, "\\'");
+    const preview = l.type==='image'
+      ? `<img src="${l.dataUrl}" style="width:100%;height:90px;object-fit:cover;border-radius:var(--radius);border:1px solid var(--line);cursor:pointer;" onclick="window.open('${safeUrl}','_blank')">`
+      : `<div style="width:100%;height:90px;display:flex;align-items:center;justify-content:center;border:1px solid var(--line);border-radius:var(--radius);cursor:pointer;color:var(--foam-dim);font-family:var(--font-mono);font-size:0.7rem;" onclick="window.open('${safeUrl}','_blank')">📄 PDF</div>`;
+    html += `<div>
+      ${preview}
+      <div style="font-size:0.7rem;color:var(--foam-dim);margin-top:4px;word-break:break-all;">${escapeHtml(l.fileName)}</div>
+      <button class="icon-btn" style="padding:2px 0;" onclick="removeLabelAttachment('${l.id}')">✕ remove</button>
+    </div>`;
+  });
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+function recalc(){
+  const batchL = parseFloat(document.getElementById('r-batch').value)||19;
+  const boilTime = parseFloat(document.getElementById('r-boil').value)||60;
+  const eff = parseFloat(document.getElementById('r-eff').value)||72;
+  const atten = parseFloat(document.getElementById('r-atten').value)||75;
+  const og = estimateOG(window._editingFerms, batchL, eff);
+  const fg = estimateFG(og, atten);
+  const ibu = estimateIBU(window._editingHops, og, batchL, boilTime);
+  const ebc = estimateEBC(window._editingFerms, batchL);
+  document.getElementById('stat-row').innerHTML = `
+    <div class="stat"><div class="stat-label">Original gravity</div><div class="stat-value">${og.toFixed(3)}</div></div>
+    <div class="stat"><div class="stat-label">Final gravity</div><div class="stat-value">${fg.toFixed(3)}</div></div>
+    <div class="stat"><div class="stat-label">ABV</div><div class="stat-value">${abv(og,fg).toFixed(1)}<span class="unit">%</span></div></div>
+    <div class="stat"><div class="stat-label">IBU</div><div class="stat-value">${ibu.toFixed(0)}</div></div>
+    <div class="stat"><div class="stat-label">EBC</div><div class="stat-value">${ebc.toFixed(0)}<span class="srm-swatch" style="background:${ebcToHex(ebc)}"></span></div></div>
+  `;
+
+  // style guideline comparison
+  const styleText = document.getElementById('r-style').value;
+  const style = findStyle(styleText);
+  const panel = document.getElementById('style-range-panel');
+  if(style){
+    const checks = [
+      {label:'OG', val:og, range:style.og, fmt:v=>v.toFixed(3)},
+      {label:'FG', val:fg, range:style.fg, fmt:v=>v.toFixed(3)},
+      {label:'IBU', val:ibu, range:style.ibu, fmt:v=>v.toFixed(0)},
+      {label:'EBC', val:ebc, range:style.ebc, fmt:v=>v.toFixed(0)},
+      {label:'ABV', val:abv(og,fg), range:style.abv, fmt:v=>v.toFixed(1)+'%'},
+    ];
+    panel.innerHTML = `<div class="panel" style="background:var(--surface-raised);">
+      <div class="panel-title" style="margin-bottom:10px;font-size:0.95rem;">Style guide: ${escapeHtml(style.name)}</div>
+      <div class="stat-row" style="margin-bottom:0;">
+        ${checks.map(c=>{
+          const ok = inRange(c.val, c.range);
+          return `<div class="stat">
+            <div class="stat-label">${c.label}</div>
+            <div class="stat-value" style="color:${ok?'var(--hop-green)':'var(--danger)'};font-size:1.1rem;">${c.fmt(c.val)}</div>
+            <div class="db-hint">target ${c.fmt(c.range[0])}–${c.fmt(c.range[1])}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  } else {
+    panel.innerHTML = '';
+  }
+
+  // water needed, from equipment profile if selected
+  const eqId = document.getElementById('r-equipment').value;
+  const eq = state.equipment.find(e=>e.id===eqId);
+  const grainKg = window._editingFerms.reduce((s,f)=> s + (parseFloat(f.amount)||0), 0);
+  if(eq){
+    const boilOffTotal = (parseFloat(eq.boilOff)||0) * (boilTime/60);
+    const preBoil = batchL + boilOffTotal + (parseFloat(eq.trubLoss)||0);
+    const totalWater = preBoil + (parseFloat(eq.deadspace)||0);
+    document.getElementById('water-stat-row').innerHTML = `
+      <div class="stat"><div class="stat-label">Pre-boil volume</div><div class="stat-value">${preBoil.toFixed(1)}<span class="unit">L</span></div></div>
+      <div class="stat"><div class="stat-label">Total water needed</div><div class="stat-value">${totalWater.toFixed(1)}<span class="unit">L</span></div></div>
+      <div class="stat"><div class="stat-label">Grain bill</div><div class="stat-value">${grainKg.toFixed(2)}<span class="unit">kg</span></div></div>
+    `;
+  } else {
+    document.getElementById('water-stat-row').innerHTML = `
+      <div class="stat"><div class="stat-label">Grain bill</div><div class="stat-value">${grainKg.toFixed(2)}<span class="unit">kg</span></div></div>
+      <div class="stat"><div class="stat-label">Pre-boil / water needed</div><div class="stat-value" style="font-size:0.95rem;color:var(--foam-dim);">select equipment profile</div></div>
+    `;
+  }
+
+  // cost
+  const fermCost = window._editingFerms.reduce((s,f)=> s + (parseFloat(f.amount)||0)*(parseFloat(f.cost)||0), 0);
+  const hopCost = window._editingHops.reduce((s,h)=> s + ((parseFloat(h.amount)||0)/1000)*(parseFloat(h.cost)||0), 0);
+  const yeastCost = parseFloat(document.getElementById('r-yeastcost').value)||0;
+  const totalCost = fermCost + hopCost + yeastCost;
+  const costPerL = batchL>0 ? totalCost/batchL : 0;
+  document.getElementById('cost-stat-row').innerHTML = `
+    <div class="stat"><div class="stat-label">Total batch cost</div><div class="stat-value">$${totalCost.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Cost per litre</div><div class="stat-value">$${costPerL.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Cost per 375mL</div><div class="stat-value">$${(costPerL*0.375).toFixed(2)}</div></div>
+  `;
+}
+
+function saveRecipe(){
+  const r = {
+    id: currentRecipeId || uid(),
+    name: document.getElementById('r-name').value,
+    style: document.getElementById('r-style').value,
+    equipmentId: document.getElementById('r-equipment').value,
+    batchSize: parseFloat(document.getElementById('r-batch').value)||19,
+    boilTime: parseFloat(document.getElementById('r-boil').value)||60,
+    efficiency: parseFloat(document.getElementById('r-eff').value)||72,
+    attenuation: parseFloat(document.getElementById('r-atten').value)||75,
+    yeast: document.getElementById('r-yeast').value,
+    yeastCost: parseFloat(document.getElementById('r-yeastcost').value)||0,
+    fermTemp: document.getElementById('r-fermtemp').value,
+    notes: document.getElementById('r-notes').value,
+    fermentables: window._editingFerms,
+    hops: window._editingHops,
+    mashSteps: window._editingMash,
+    labels: window._editingLabels,
+  };
+  const idx = state.recipes.findIndex(x=>x.id===r.id);
+  if(idx>=0) state.recipes[idx] = r; else state.recipes.push(r);
+  currentRecipeId = r.id;
+  persist(true);
+  showToast('Recipe saved');
+  showView('recipes');
+}
+
+function deleteCurrentRecipe(){
+  if(!currentRecipeId){ showView('recipes'); return; }
+  if(!confirm('Delete this recipe? This cannot be undone.')) return;
+  state.recipes = state.recipes.filter(r=>r.id!==currentRecipeId);
+  persist(true);
+  showToast('Recipe deleted');
+  showView('recipes');
+}
+
+function cloneAndScale(){
+  saveRecipe();
+  const r = state.recipes.find(x=>x.id===currentRecipeId);
+  if(!r){ showToast('Save the recipe first'); return; }
+  const input = prompt('New batch size (L) — leave as-is for a plain duplicate:', r.batchSize);
+  if(input===null) return;
+  const newSize = parseFloat(input) || r.batchSize;
+  const scale = newSize / r.batchSize;
+  const clone = JSON.parse(JSON.stringify(r));
+  clone.id = uid();
+  clone.name = r.name + (scale!==1 ? ' (scaled to '+newSize+'L)' : ' (copy)');
+  clone.batchSize = newSize;
+  clone.fermentables = clone.fermentables.map(f=> Object.assign({}, f, {amount: +((parseFloat(f.amount)||0)*scale).toFixed(3)}));
+  clone.hops = clone.hops.map(h=> Object.assign({}, h, {amount: +((parseFloat(h.amount)||0)*scale).toFixed(1)}));
+  state.recipes.push(clone);
+  persist(true);
+  showToast(scale!==1 ? 'Scaled clone created' : 'Recipe duplicated');
+  openRecipeEditor(clone.id);
+}
+
+function nextLotNumber(dateStr){
+  state.batchCounter = (state.batchCounter||0) + 1;
+  const year = new Date(dateStr).getFullYear();
+  return `EB-${year}-${String(state.batchCounter).padStart(3,'0')}`;
+}
+
+function brewThis(){
+  saveRecipe();
+  const r = state.recipes.find(x=>x.id===currentRecipeId);
+  const date = new Date().toISOString().slice(0,10);
+  const batch = {
+    id: uid(), recipeId: r.id, recipeName: r.name,
+    lotNumber: nextLotNumber(date),
+    date: date,
+    status: 'active',
+    brewedBy: brewerName||'',
+    readings: [{date, gravity: estimateOG(r.fermentables, r.batchSize, r.efficiency).toFixed(3), temp:'', label:'OG', loggedBy:brewerName||''}],
+    packaging: [],
+    score: '',
+    tasting: '',
+    notes: ''
+  };
+  state.batches.push(batch);
+  persist(true);
+  showToast('Batch ' + batch.lotNumber + ' started');
+  showView('ferment');
+}
+
+/* ---------------------------------------------------------------------
+   CALCULATORS (standalone, metric)
+--------------------------------------------------------------------- */
+function calcABV(){
+  const og = parseFloat(document.getElementById('c-og').value)||0;
+  const fg = parseFloat(document.getElementById('c-fg').value)||0;
+  document.getElementById('c-abv-out').value = abv(og,fg).toFixed(2) + ' %';
+}
+function calcHopAA(){
+  const grams = parseFloat(document.getElementById('h-aa-grams').value)||0;
+  const recipeAA = parseFloat(document.getElementById('h-aa-recipe').value)||0;
+  const actualAA = parseFloat(document.getElementById('h-aa-actual').value)||0;
+  const out = document.getElementById('h-aa-out');
+  if(actualAA<=0){ out.value = '—'; return; }
+  const adjusted = grams * (recipeAA/actualAA);
+  out.value = adjusted.toFixed(1) + ' g';
+}
+function calcHydroCorrection(){
+  const measured = parseFloat(document.getElementById('h-measured').value)||1.000;
+  const sampleC = parseFloat(document.getElementById('h-sampletemp').value)||20;
+  const calC = parseFloat(document.getElementById('h-caltemp').value)||20;
+  const sampleF = sampleC*9/5+32;
+  const calF = calC*9/5+32;
+  const factor = t => 1.00130346 - 0.000134722124*t + 0.00000204052596*t*t - 0.00000000232820948*t*t*t;
+  const corrected = measured * (factor(sampleF) / factor(calF));
+  document.getElementById('h-out').innerHTML = corrected.toFixed(4);
+}
+function calcYeastStarter(){
+  const volL = parseFloat(document.getElementById('y-vol').value)||19;
+  const og = parseFloat(document.getElementById('y-og').value)||1.050;
+  const type = document.getElementById('y-type').value;
+  const ageDays = parseFloat(document.getElementById('y-age').value)||0;
+  const packCells = parseFloat(document.getElementById('y-packcells').value)||100;
+  const pitchRate = type==='lager' ? 1.5 : 0.75; // million cells / mL / degree Plato
+  const plato = 259 - 259/og;
+  const volMl = volL*1000;
+  const neededMillion = volMl * plato * pitchRate;
+  const neededBillion = neededMillion/1000;
+  const viabilityPct = Math.max(50, 100 - ageDays*0.7);
+  const viableBillion = packCells * (viabilityPct/100);
+  document.getElementById('y-needed').innerHTML = neededBillion.toFixed(0) + '<span class="unit">billion</span>';
+  document.getElementById('y-viable').innerHTML = viableBillion.toFixed(0) + '<span class="unit">billion (' + viabilityPct.toFixed(0) + '% viable)</span>';
+  const starterEl = document.getElementById('y-starter');
+  if(viableBillion >= neededBillion){
+    starterEl.innerHTML = 'Not needed';
+  } else {
+    const deficit = neededBillion - viableBillion;
+    // rough sizing: bigger deficit -> bigger starter, using standard 100g DME/L @ ~1.5-2L typical range
+    const starterL = Math.max(0.5, Math.min(4, deficit/50));
+    const dmeG = starterL * 100;
+    starterEl.innerHTML = starterL.toFixed(1) + 'L <span class="unit">(~'+dmeG.toFixed(0)+'g DME)</span>';
+  }
+}
+function calcStrike(){
+  const grainKg = parseFloat(document.getElementById('s-grain').value)||0;
+  const ratio = parseFloat(document.getElementById('s-ratio').value)||3;
+  const gt = parseFloat(document.getElementById('s-graintemp').value)||20;
+  const target = parseFloat(document.getElementById('s-target').value)||67;
+  const strikeTemp = (0.4/ratio) * (target-gt) + target;
+  const volL = grainKg*ratio;
+  document.getElementById('s-vol-out').textContent = volL.toFixed(1) + ' L';
+  document.getElementById('s-temp-out').textContent = strikeTemp.toFixed(1) + ' °C';
+}
+function calcWater(){
+  const L = parseFloat(document.getElementById('w-vol').value)||1;
+  const gypsum = parseFloat(document.getElementById('w-gypsum').value)||0;
+  const cacl2 = parseFloat(document.getElementById('w-cacl2').value)||0;
+  const epsom = parseFloat(document.getElementById('w-epsom').value)||0;
+  const nacl = parseFloat(document.getElementById('w-nacl').value)||0;
+  const soda = parseFloat(document.getElementById('w-soda').value)||0;
+  const chalk = parseFloat(document.getElementById('w-chalk').value)||0;
+  const ca = gypsum*(232.5/L) + cacl2*(272/L) + chalk*(400.4/L);
+  const so4 = gypsum*(557.7/L) + epsom*(389/L);
+  const cl = cacl2*(482/L) + nacl*(607/L);
+  const na = nacl*(393/L) + soda*(274/L);
+  const hco3 = soda*(726/L) + chalk*(1219.4/L);
+  const mg = epsom*(98.6/L);
+  document.getElementById('water-out').innerHTML = `
+    <div class="stat"><div class="stat-label">Ca²⁺</div><div class="stat-value">${ca.toFixed(0)}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">SO₄²⁻</div><div class="stat-value">${so4.toFixed(0)}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">Cl⁻</div><div class="stat-value">${cl.toFixed(0)}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">Na⁺</div><div class="stat-value">${na.toFixed(0)}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">Mg²⁺</div><div class="stat-value">${mg.toFixed(0)}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">HCO₃⁻</div><div class="stat-value">${hco3.toFixed(0)}<span class="unit">ppm</span></div></div>
+  `;
+}
+
+const STYLE_DB = [
+  {name:'American Light Lager', og:[1.028,1.040], fg:[0.998,1.008], ibu:[8,12], ebc:[3.9,5.9], abv:[2.8,4.2]},
+  {name:'American Pale Ale', og:[1.045,1.060], fg:[1.010,1.015], ibu:[30,50], ebc:[9.9,19.7], abv:[4.5,6.2]},
+  {name:'American IPA', og:[1.056,1.070], fg:[1.008,1.014], ibu:[40,70], ebc:[11.8,27.6], abv:[5.5,7.5]},
+  {name:'Double IPA', og:[1.065,1.085], fg:[1.008,1.018], ibu:[60,100], ebc:[8.9,19.7], abv:[7.5,10.5]},
+  {name:'New England IPA', og:[1.060,1.072], fg:[1.010,1.015], ibu:[25,50], ebc:[5.9,13.8], abv:[6.0,9.0]},
+  {name:'Session IPA', og:[1.038,1.050], fg:[1.008,1.012], ibu:[30,45], ebc:[5.9,13.8], abv:[3.5,5.0]},
+  {name:'American Amber Ale', og:[1.045,1.060], fg:[1.010,1.015], ibu:[25,40], ebc:[19.7,33.5], abv:[4.5,6.2]},
+  {name:'English Bitter', og:[1.032,1.040], fg:[1.007,1.011], ibu:[25,35], ebc:[11.8,27.6], abv:[3.2,3.8]},
+  {name:'English IPA', og:[1.050,1.065], fg:[1.010,1.018], ibu:[35,63], ebc:[11.8,27.6], abv:[5.0,7.0]},
+  {name:'Irish Dry Stout', og:[1.036,1.050], fg:[1.007,1.011], ibu:[25,45], ebc:[49.3,78.8], abv:[4.0,4.5]},
+  {name:'Oatmeal Stout', og:[1.048,1.065], fg:[1.010,1.018], ibu:[25,40], ebc:[43.3,78.8], abv:[4.2,5.9]},
+  {name:'Imperial Stout', og:[1.075,1.115], fg:[1.018,1.030], ibu:[50,90], ebc:[59.1,78.8], abv:[8.0,12.0]},
+  {name:'Porter', og:[1.040,1.052], fg:[1.008,1.014], ibu:[18,35], ebc:[39.4,59.1], abv:[4.0,5.4]},
+  {name:'Brown Ale', og:[1.045,1.060], fg:[1.010,1.016], ibu:[20,30], ebc:[29.6,43.3], abv:[4.3,6.2]},
+  {name:'Scottish Ale', og:[1.035,1.060], fg:[1.010,1.016], ibu:[10,20], ebc:[17.7,37.4], abv:[3.0,6.0]},
+  {name:'Belgian Witbier', og:[1.044,1.052], fg:[1.008,1.012], ibu:[10,20], ebc:[3.9,7.9], abv:[4.5,5.5]},
+  {name:'Belgian Dubbel', og:[1.062,1.075], fg:[1.008,1.018], ibu:[15,25], ebc:[19.7,33.5], abv:[6.0,7.6]},
+  {name:'Belgian Tripel', og:[1.075,1.085], fg:[1.008,1.014], ibu:[20,40], ebc:[5.9,11.8], abv:[7.5,9.5]},
+  {name:'Saison', og:[1.048,1.065], fg:[1.002,1.012], ibu:[20,35], ebc:[5.9,15.8], abv:[5.0,7.0]},
+  {name:'German Pilsner', og:[1.044,1.050], fg:[1.008,1.013], ibu:[22,40], ebc:[3.9,9.9], abv:[4.4,5.2]},
+  {name:'Munich Helles', og:[1.044,1.050], fg:[1.008,1.012], ibu:[16,22], ebc:[5.9,9.9], abv:[4.7,5.4]},
+  {name:'Munich Dunkel', og:[1.048,1.056], fg:[1.010,1.016], ibu:[18,28], ebc:[27.6,55.2], abv:[4.5,5.6]},
+  {name:'Vienna Lager', og:[1.048,1.056], fg:[1.010,1.014], ibu:[18,30], ebc:[15.8,27.6], abv:[4.5,5.5]},
+  {name:'Kölsch', og:[1.044,1.050], fg:[1.007,1.011], ibu:[18,30], ebc:[6.9,9.9], abv:[4.4,5.2]},
+  {name:'Düsseldorf Altbier', og:[1.046,1.054], fg:[1.010,1.015], ibu:[25,50], ebc:[21.7,37.4], abv:[4.5,5.2]},
+  {name:'Weissbier / Hefeweizen', og:[1.044,1.053], fg:[1.008,1.014], ibu:[8,15], ebc:[3.9,11.8], abv:[4.3,5.6]},
+  {name:'Baltic Porter', og:[1.060,1.080], fg:[1.016,1.024], ibu:[20,40], ebc:[33.5,59.1], abv:[5.5,9.5]},
+  {name:'Barleywine', og:[1.090,1.120], fg:[1.016,1.030], ibu:[35,70], ebc:[15.8,43.3], abv:[8.0,12.0]},
+  {name:'Australian Sparkling Ale', og:[1.038,1.050], fg:[1.004,1.010], ibu:[20,40], ebc:[7.9,13.8], abv:[4.5,6.2]},
+  {name:'Classic Australian Lager', og:[1.038,1.050], fg:[1.006,1.012], ibu:[15,23], ebc:[3.9,7.9], abv:[4.0,5.0]},
+  {name:'Australian Mid-Strength Lager', og:[1.030,1.035], fg:[1.004,1.008], ibu:[10,18], ebc:[3.9,7.9], abv:[2.7,3.5]},
+  {name:'Australian XPA', og:[1.044,1.052], fg:[1.008,1.012], ibu:[20,35], ebc:[5.9,11.8], abv:[4.2,5.2]},
+  {name:'Australian Pale Ale', og:[1.044,1.056], fg:[1.010,1.014], ibu:[20,35], ebc:[19.7,39.4], abv:[4.5,5.5]},
+  {name:'Australian Draught', og:[1.040,1.050], fg:[1.008,1.012], ibu:[15,20], ebc:[5.9,9.9], abv:[4.0,4.9]},
+  {name:'Australian Old Ale', og:[1.060,1.090], fg:[1.012,1.020], ibu:[20,35], ebc:[23.6,49.3], abv:[6.0,8.0]},
+  {name:'Australian Premium Lager', og:[1.048,1.056], fg:[1.008,1.012], ibu:[18,25], ebc:[5.9,9.9], abv:[4.8,5.6]},
+];
+function normalizeText(s){
+  // strips accents/diacritics so "Kolsch" matches "Kölsch", "Dusseldorf" matches "Düsseldorf", etc.
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+}
+function findStyle(styleText){
+  if(!styleText) return null;
+  const q = normalizeText(styleText);
+  if(!q) return null;
+  let match = STYLE_DB.find(s=> normalizeText(s.name)===q);
+  if(match) return match;
+  return STYLE_DB.find(s=> q.includes(normalizeText(s.name)) || normalizeText(s.name).includes(q));
+}
+function inRange(val, range){ return val>=range[0] && val<=range[1]; }
+
+const WATER_PRESETS = {
+  'Pilsen':          {ca:7,   so4:5,   cl:5,   na:2,   mg:2,  hco3:15},
+  'Dortmund':        {ca:225, so4:120, cl:60,  na:60,  mg:40, hco3:180},
+  'Vienna':          {ca:200, so4:125, cl:12,  na:8,   mg:60, hco3:120},
+  'Munich':          {ca:75,  so4:10,  cl:2,   na:1,   mg:18, hco3:150},
+  'Burton on Trent': {ca:352, so4:820, cl:16,  na:54,  mg:24, hco3:320},
+  'Dublin':          {ca:118, so4:56,  cl:19,  na:12,  mg:4,  hco3:319},
+  'London':          {ca:52,  so4:32,  cl:35,  na:86,  mg:32, hco3:104},
+  'Edinburgh':       {ca:105, so4:140, cl:15,  na:55,  mg:25, hco3:225},
+};
+function populatePresetSelect(){
+  const sel = document.getElementById('w-preset');
+  const sel2 = document.getElementById('t-preset');
+  Object.keys(WATER_PRESETS).forEach(name=>{
+    if(sel){ const opt = document.createElement('option'); opt.value = name; opt.textContent = name; sel.appendChild(opt); }
+    if(sel2){ const opt2 = document.createElement('option'); opt2.value = name; opt2.textContent = name; sel2.appendChild(opt2); }
+  });
+}
+function applyPreset(){
+  const name = document.getElementById('w-preset').value;
+  const out = document.getElementById('preset-out');
+  if(!name){ out.innerHTML = ''; return; }
+  const p = WATER_PRESETS[name];
+  out.innerHTML = `
+    <div class="stat"><div class="stat-label">Ca²⁺</div><div class="stat-value">${p.ca}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">SO₄²⁻</div><div class="stat-value">${p.so4}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">Cl⁻</div><div class="stat-value">${p.cl}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">Na⁺</div><div class="stat-value">${p.na}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">Mg²⁺</div><div class="stat-value">${p.mg}<span class="unit">ppm</span></div></div>
+    <div class="stat"><div class="stat-label">HCO₃⁻</div><div class="stat-value">${p.hco3}<span class="unit">ppm</span></div></div>
+  `;
+}
+function calcTargetWater(){
+  const name = document.getElementById('t-preset').value;
+  const out = document.getElementById('target-water-out');
+  const L = parseFloat(document.getElementById('t-vol').value)||19;
+  if(!name){ out.innerHTML = ''; return; }
+  const t = WATER_PRESETS[name];
+  // Solved in dependency order so each salt's OTHER ion is accounted for
+  // before the next salt is solved. Chalk (CaCO3) is used where it helps —
+  // it pairs Ca with alkalinity instead of Cl, so profiles wanting both high
+  // Ca and high HCO3 (Dortmund, Burton, Dublin, London...) lean on it before
+  // falling back to CaCl2, which meaningfully cuts the Cl overshoot on those.
+  let epsom  = Math.max(0, t.mg * L / 98.6);                 // Mg  <- Epsom only
+  let gypsum = Math.max(0, (t.so4*L - 389*epsom) / 557.7);   // SO4 <- Gypsum + Epsom
+  let caFromGypsum = 232.5*gypsum/L;
+  let caRemaining = Math.max(0, t.ca - caFromGypsum);
+  // use chalk for whichever of (remaining Ca) or (HCO3 target) is smaller,
+  // so it never overshoots either on its own
+  let chalk = Math.min(caRemaining*L/400.4, t.hco3*L/1219.4);
+  chalk = Math.max(0, chalk);
+  let caFromChalk = 400.4*chalk/L;
+  let hco3FromChalk = 1219.4*chalk/L;
+  let cacl2  = Math.max(0, (t.ca*L - 232.5*gypsum - 400.4*chalk) / 272); // Ca  <- Gypsum + Chalk + CaCl2
+  let nacl   = Math.max(0, (t.cl*L - 482*cacl2) / 607);                 // Cl  <- CaCl2 + NaCl
+  let soda   = Math.max(0, (t.hco3*L - 1219.4*chalk) / 726);            // HCO3 <- Chalk + Baking soda
+
+  // What these salts actually produce (same math as the calculator above) —
+  // shown directly so any gap from the target is visible immediately rather
+  // than only discovered by cross-checking manually.
+  const resCa   = (232.5*gypsum + 272*cacl2 + 400.4*chalk) / L;
+  const resSo4  = (557.7*gypsum + 389*epsom) / L;
+  const resCl   = (482*cacl2 + 607*nacl) / L;
+  const resNa   = (393*nacl + 274*soda) / L;
+  const resMg   = (98.6*epsom) / L;
+  const resHco3 = (726*soda + 1219.4*chalk) / L;
+
+  const rows = [
+    ['Ca²⁺', resCa, t.ca], ['SO₄²⁻', resSo4, t.so4], ['Cl⁻', resCl, t.cl],
+    ['Na⁺', resNa, t.na], ['Mg²⁺', resMg, t.mg], ['HCO₃⁻', resHco3, t.hco3],
+  ];
+  const anyOff = rows.some(r => Math.abs(r[1]-r[2]) > Math.max(5, r[2]*0.15));
+
+  out.innerHTML = `
+    <div class="stat"><div class="stat-label">Gypsum (CaSO₄)</div><div class="stat-value">${gypsum.toFixed(1)}<span class="unit">g</span></div></div>
+    <div class="stat"><div class="stat-label">Calcium chloride</div><div class="stat-value">${cacl2.toFixed(1)}<span class="unit">g</span></div></div>
+    <div class="stat"><div class="stat-label">Epsom salt</div><div class="stat-value">${epsom.toFixed(1)}<span class="unit">g</span></div></div>
+    <div class="stat"><div class="stat-label">Table salt</div><div class="stat-value">${nacl.toFixed(1)}<span class="unit">g</span></div></div>
+    <div class="stat"><div class="stat-label">Baking soda</div><div class="stat-value">${soda.toFixed(1)}<span class="unit">g</span></div></div>
+    <div class="stat"><div class="stat-label">Chalk (CaCO₃)</div><div class="stat-value">${chalk.toFixed(1)}<span class="unit">g</span></div></div>
+  `;
+  out.innerHTML += `<div class="stat-row" style="margin-top:10px;margin-bottom:0;">` +
+    rows.map(r=>{
+      const off = Math.abs(r[1]-r[2]) > Math.max(5, r[2]*0.15);
+      return `<div class="stat"><div class="stat-label">${r[0]} result</div><div class="stat-value" style="font-size:1rem;color:${off?'var(--danger)':'var(--hop-green)'};">${r[1].toFixed(0)}<span class="unit">/ ${r[2]} target</span></div></div>`;
+    }).join('') + `</div>`;
+  if(anyOff){
+    out.innerHTML += `<p class="db-hint" style="margin-top:10px;">Some ions land off-target (shown in red) — this is a real limit of these salts, not a rounding error. Getting enough Ca²⁺ or Mg²⁺ for this profile inherently drags along more Cl⁻ or SO₄²⁻ than the target calls for, because that's the fixed ratio those salts come in (chalk helps by pairing Ca with alkalinity instead of Cl, but can only cover so much before CaCl₂ is needed for the rest). Historical municipal water profiles like this often can't be replicated exactly from RO water — matching Ca²⁺, Mg²⁺ and HCO₃⁻ (and getting the general sulfate:chloride balance close) matters more in practice than hitting every ion precisely.</p>`;
+  }
+  if(chalk > 0.3){
+    out.innerHTML += `<p class="db-hint" style="margin-top:4px;">Uses ${chalk.toFixed(1)}g chalk — remember it's poorly soluble outside an active mash; dose conservatively.</p>`;
+  }
+}
+
+function residualCO2(tempC){
+  const tempF = tempC*9/5+32;
+  return 3.0378 - 0.050062*tempF + 0.00026555*tempF*tempF;
+}
+function calcPriming(){
+  const volL = parseFloat(document.getElementById('p-vol').value)||19;
+  const tempC = parseFloat(document.getElementById('p-temp').value)||20;
+  const target = parseFloat(document.getElementById('p-target').value)||2.4;
+  const residual = residualCO2(tempC);
+  const volsNeeded = Math.max(0, target-residual);
+  const dexGrams = volsNeeded * volL * 4;
+  const sucGrams = dexGrams * 0.91; // table sugar is more fermentable per gram than dextrose
+  document.getElementById('p-dex-out').innerHTML = dexGrams.toFixed(0) + '<span class="unit">g</span>';
+  document.getElementById('p-suc-out').innerHTML = sucGrams.toFixed(0) + '<span class="unit">g</span>';
+}
+function forcedCarbPSI(tempF, volumes){
+  return -16.6999 - 0.0101059*tempF + 0.00116512*tempF*tempF + 0.173354*tempF*volumes + 4.24267*volumes - 0.0684226*volumes*volumes;
+}
+function calcForcedCarb(){
+  const tempC = parseFloat(document.getElementById('f-temp').value)||4;
+  const target = parseFloat(document.getElementById('f-target').value)||2.4;
+  const tempF = tempC*9/5+32;
+  const psi = Math.max(0, forcedCarbPSI(tempF, target));
+  const kpa = psi*6.89476;
+  document.getElementById('f-kpa-out').innerHTML = kpa.toFixed(0) + '<span class="unit">kPa</span>';
+  document.getElementById('f-psi-out').innerHTML = psi.toFixed(1) + '<span class="unit">psi</span>';
+}
+
+/* ---------------------------------------------------------------------
+   SALES & COSTING (Australian excise, GST, margin)
+   Excise rates: $ per litre of alcohol (LAL), current ATO figures.
+   Packaged rates effective from 2 Feb 2026 (indexed each Feb/Aug).
+   Draught rates frozen from 4 Aug 2025 for two years (resume Aug 2027).
+   Source: ato.gov.au — Excise duty rates for alcohol. Verify before
+   relying on this for real filings; rates change biannually.
+--------------------------------------------------------------------- */
+const EXCISE_RATES = {
+  packaged: { le3: 54.74, mid: 63.75, over35: 63.75 }, // <8L, or 8-48L not pressurised
+  draught:  { le3: 10.57, mid: 33.11, over35: 43.39 }, // >48L, or 8-48L pressurised/tap (e.g. kegs)
+};
+// Full (100%) excise remission available to eligible small manufacturers
+// (AMR scheme) up to this cap per financial year — $400,000 from 1 July 2026.
+const AMR_CAP = 400000;
+
+function exciseRateFor(abvPct, containerType){
+  const table = containerType==='draught' ? EXCISE_RATES.draught : EXCISE_RATES.packaged;
+  if(abvPct <= 3) return table.le3;
+  if(abvPct <= 3.5) return table.mid;
+  return table.over35;
+}
+function calcExcise(volumeL, abvPct, containerType){
+  const rate = exciseRateFor(abvPct, containerType);
+  const dutiableAbv = Math.max(0, abvPct - 1.15);
+  const lal = volumeL * (dutiableAbv/100);
+  const duty = lal * rate;
+  return {rate, lal, duty};
+}
+function standardDrinks(unitMl, abvPct){
+  return (unitMl * (abvPct/100) * 0.789) / 10;
+}
+
+function populateSalesRecipeSelect(){
+  const sel = document.getElementById('sc-recipe');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— Manual entry —</option>' + state.recipes.map(r=>`<option value="${r.id}">${escapeHtml(r.name)||'Untitled'}</option>`).join('');
+  sel.value = current;
+}
+function applySalesRecipe(){
+  const id = document.getElementById('sc-recipe').value;
+  const r = state.recipes.find(x=>x.id===id);
+  if(!r) { calcSalesCosting(); return; }
+  const og = estimateOG(r.fermentables, r.batchSize, r.efficiency);
+  const fg = estimateFG(og, r.attenuation);
+  const fermCost = (r.fermentables||[]).reduce((s,f)=> s + (parseFloat(f.amount)||0)*(parseFloat(f.cost)||0), 0);
+  const hopCost = (r.hops||[]).reduce((s,h)=> s + ((parseFloat(h.amount)||0)/1000)*(parseFloat(h.cost)||0), 0);
+  const yeastCost = parseFloat(r.yeastCost)||0;
+  document.getElementById('sc-vol').value = r.batchSize;
+  document.getElementById('sc-abv').value = abv(og,fg).toFixed(1);
+  document.getElementById('sc-ingcost').value = (fermCost+hopCost+yeastCost).toFixed(2);
+  calcSalesCosting();
+}
+
+function calcSalesCosting(){
+  const volL = parseFloat(document.getElementById('sc-vol').value)||0;
+  const abvPct = parseFloat(document.getElementById('sc-abv').value)||0;
+  const ingCost = parseFloat(document.getElementById('sc-ingcost').value)||0;
+  const sizeMl = parseFloat(document.getElementById('sc-size').value)||375;
+  const containerType = document.getElementById('sc-container').value;
+  const units = sizeMl>0 ? Math.floor((volL*1000)/sizeMl) : 0;
+  document.getElementById('sc-units').value = units;
+
+  const containerCost = parseFloat(document.getElementById('sc-container-cost').value)||0;
+  const capCost = parseFloat(document.getElementById('sc-cap-cost').value)||0;
+  const labelCost = parseFloat(document.getElementById('sc-label-cost').value)||0;
+  const co2Cost = parseFloat(document.getElementById('sc-co2-cost').value)||0;
+  const otherCost = parseFloat(document.getElementById('sc-other-cost').value)||0;
+  const packagingPerUnit = containerCost + capCost + labelCost;
+  const packagingTotal = packagingPerUnit*units + co2Cost + otherCost;
+
+  const excise = calcExcise(volL, abvPct, containerType);
+  const amrApplied = document.getElementById('sc-amr').checked;
+  const exciseCharged = amrApplied ? 0 : excise.duty;
+
+  document.getElementById('sc-excise-out').innerHTML = `
+    <div class="stat"><div class="stat-label">Rate applied</div><div class="stat-value" style="font-size:1.1rem;">$${excise.rate.toFixed(2)}<span class="unit">/LAL</span></div></div>
+    <div class="stat"><div class="stat-label">Litres of alcohol (LAL)</div><div class="stat-value" style="font-size:1.1rem;">${excise.lal.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Excise payable</div><div class="stat-value" style="font-size:1.1rem;">$${excise.duty.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Excise after AMR</div><div class="stat-value" style="font-size:1.1rem;color:${amrApplied?'var(--hop-green)':'var(--foam)'};">$${exciseCharged.toFixed(2)}</div></div>
+  `;
+
+  const totalCostExGst = ingCost + packagingTotal + exciseCharged;
+  const costPerUnit = units>0 ? totalCostExGst/units : 0;
+  const stdDrinksPerUnit = standardDrinks(sizeMl, abvPct);
+  const costPerStdDrink = stdDrinksPerUnit>0 ? costPerUnit/stdDrinksPerUnit : 0;
+
+  document.getElementById('sc-cost-summary').innerHTML = `
+    <div class="stat"><div class="stat-label">Total batch cost</div><div class="stat-value">$${totalCostExGst.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Units produced</div><div class="stat-value">${units}</div></div>
+    <div class="stat"><div class="stat-label">Cost per unit</div><div class="stat-value">$${costPerUnit.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Standard drinks/unit</div><div class="stat-value">${stdDrinksPerUnit.toFixed(1)}</div></div>
+    <div class="stat"><div class="stat-label">Cost per standard drink</div><div class="stat-value">$${costPerStdDrink.toFixed(2)}</div></div>
+  `;
+
+  const gstOn = document.getElementById('sc-gst').checked;
+  const targetGpInput = document.getElementById('sc-target-gp').value;
+  let priceIncGst = parseFloat(document.getElementById('sc-price').value)||0;
+
+  if(targetGpInput!==''){
+    const targetGp = parseFloat(targetGpInput)/100;
+    // price such that (price_ex_gst - cost)/price_ex_gst = targetGp
+    const priceExGst = targetGp<1 ? costPerUnit/(1-targetGp) : 0;
+    priceIncGst = gstOn ? priceExGst*1.1 : priceExGst;
+    document.getElementById('sc-price').value = priceIncGst.toFixed(2);
+  }
+
+  const priceExGst = gstOn ? priceIncGst/1.1 : priceIncGst;
+  const gstAmount = priceIncGst - priceExGst;
+  const grossProfitPerUnit = priceExGst - costPerUnit;
+  const gpPct = priceExGst>0 ? (grossProfitPerUnit/priceExGst)*100 : 0;
+  const markupPct = costPerUnit>0 ? (grossProfitPerUnit/costPerUnit)*100 : 0;
+
+  document.getElementById('sc-margin-out').innerHTML = `
+    <div class="stat"><div class="stat-label">Price ex-GST</div><div class="stat-value">$${priceExGst.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">GST component</div><div class="stat-value">$${gstAmount.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Cost per unit</div><div class="stat-value">$${costPerUnit.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Gross profit / unit</div><div class="stat-value" style="color:${grossProfitPerUnit>=0?'var(--hop-green)':'var(--danger)'};">$${grossProfitPerUnit.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">GP%</div><div class="stat-value" style="color:${gpPct>=0?'var(--hop-green)':'var(--danger)'};">${gpPct.toFixed(1)}%</div></div>
+    <div class="stat"><div class="stat-label">Markup</div><div class="stat-value">${markupPct.toFixed(1)}%</div></div>
+  `;
+
+  const totalRevenueExGst = priceExGst*units;
+  const totalProfit = totalRevenueExGst - totalCostExGst;
+  document.getElementById('sc-profit-out').innerHTML = `
+    <div class="stat"><div class="stat-label">Revenue (ex-GST, all units)</div><div class="stat-value">$${totalRevenueExGst.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Total batch cost</div><div class="stat-value">$${totalCostExGst.toFixed(2)}</div></div>
+    <div class="stat"><div class="stat-label">Total profit</div><div class="stat-value" style="color:${totalProfit>=0?'var(--hop-green)':'var(--danger)'};">$${totalProfit.toFixed(2)}</div></div>
+  `;
+}
+
+/* ---------------------------------------------------------------------
+   EQUIPMENT PROFILES
+--------------------------------------------------------------------- */
+function addEquipment(){
+  state.equipment.push({id:uid(), name:'New system', batchSize:19, boilTime:60, efficiency:72, boilOff:3, deadspace:1.5, trubLoss:1, maintenance:[]});
+  persist();
+  renderEquipmentList();
+  populateEquipmentSelect();
+}
+function removeEquipment(id){
+  if(!confirm('Delete this equipment profile?')) return;
+  state.equipment = state.equipment.filter(e=>e.id!==id);
+  persist(true);
+  renderEquipmentList();
+  populateEquipmentSelect();
+}
+function updateEquipment(id, field, val){
+  const eq = state.equipment.find(e=>e.id===id);
+  if(!eq) return;
+  eq[field] = val;
+  persist();
+  if(field==='name') populateEquipmentSelect();
+}
+function addMaintenance(eqId){
+  const eq = state.equipment.find(e=>e.id===eqId);
+  eq.maintenance = eq.maintenance || [];
+  eq.maintenance.push({date:new Date().toISOString().slice(0,10), task:'', notes:''});
+  persist();
+  renderEquipmentList();
+}
+function updateMaintenance(eqId, idx, field, val){
+  const eq = state.equipment.find(e=>e.id===eqId);
+  eq.maintenance[idx][field] = val;
+  persist();
+}
+function removeMaintenance(eqId, idx){
+  const eq = state.equipment.find(e=>e.id===eqId);
+  eq.maintenance.splice(idx,1);
+  persist();
+  renderEquipmentList();
+}
+function renderEquipmentList(){
+  const el = document.getElementById('equipment-list');
+  if(!el) return;
+  if(state.equipment.length===0){
+    el.innerHTML = `<div class="empty-state"><div class="glyph-lg">⚙</div>No equipment profiles yet. Add your system for accurate volume predictions.</div>`;
+    return;
+  }
+  el.innerHTML = state.equipment.map(eq=>{
+    const maint = eq.maintenance || [];
+    return `
+    <div class="panel" style="background:var(--surface-raised);margin-bottom:14px;">
+      <div class="grid cols-4" style="margin-bottom:12px;">
+        <div class="field"><label>Profile name</label><input value="${escapeAttr(eq.name)}" onchange="updateEquipment('${eq.id}','name',this.value)"></div>
+        <div class="field"><label>Default batch size (L)</label><input type="number" step="0.5" value="${eq.batchSize}" onchange="updateEquipment('${eq.id}','batchSize',this.value)"></div>
+        <div class="field"><label>Default boil time (min)</label><input type="number" step="1" value="${eq.boilTime}" onchange="updateEquipment('${eq.id}','boilTime',this.value)"></div>
+        <div class="field"><label>Default efficiency (%)</label><input type="number" step="1" value="${eq.efficiency}" onchange="updateEquipment('${eq.id}','efficiency',this.value)"></div>
+      </div>
+      <div class="grid cols-3" style="margin-bottom:16px;">
+        <div class="field"><label>Boil-off rate (L/hr)</label><input type="number" step="0.1" value="${eq.boilOff}" onchange="updateEquipment('${eq.id}','boilOff',this.value)"></div>
+        <div class="field"><label>Mash tun deadspace (L)</label><input type="number" step="0.1" value="${eq.deadspace}" onchange="updateEquipment('${eq.id}','deadspace',this.value)"></div>
+        <div class="field"><label>Kettle / trub loss (L)</label><input type="number" step="0.1" value="${eq.trubLoss}" onchange="updateEquipment('${eq.id}','trubLoss',this.value)"></div>
+      </div>
+      <div class="section-head" style="margin-bottom:10px;">
+        <h3 style="font-family:var(--font-display);font-size:0.95rem;margin:0;color:var(--foam);">Cleaning &amp; maintenance log</h3>
+        <button class="btn small ghost" onclick="addMaintenance('${eq.id}')">+ Add entry</button>
+      </div>
+      ${maint.length===0 ? `<p class="page-sub" style="margin:0 0 12px 0;">No maintenance logged yet.</p>` : `
+      <table style="margin-bottom:12px;">
+        <thead><tr><th style="width:120px;">Date</th><th style="width:180px;">Task</th><th>Notes</th><th style="width:36px;"></th></tr></thead>
+        <tbody>
+        ${maint.map((m,i)=>`
+          <tr>
+            <td><input type="date" value="${m.date}" onchange="updateMaintenance('${eq.id}',${i},'date',this.value)"></td>
+            <td><input value="${escapeAttr(m.task)}" placeholder="e.g. Descale kettle" onchange="updateMaintenance('${eq.id}',${i},'task',this.value)"></td>
+            <td><input value="${escapeAttr(m.notes)}" onchange="updateMaintenance('${eq.id}',${i},'notes',this.value)"></td>
+            <td><button class="icon-btn" onclick="removeMaintenance('${eq.id}',${i})">✕</button></td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`}
+      <button class="btn danger small" onclick="removeEquipment('${eq.id}')">Delete profile</button>
+    </div>
+  `;}).join('');
+}
+function populateEquipmentSelect(){
+  const sel = document.getElementById('r-equipment');
+  if(!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">— None / manual —</option>' + state.equipment.map(eq=>`<option value="${eq.id}">${escapeHtml(eq.name)}</option>`).join('');
+  sel.value = current;
+}
+function applyEquipment(){
+  const id = document.getElementById('r-equipment').value;
+  const eq = state.equipment.find(e=>e.id===id);
+  if(eq){
+    document.getElementById('r-batch').value = eq.batchSize;
+    document.getElementById('r-boil').value = eq.boilTime;
+    document.getElementById('r-eff').value = eq.efficiency;
+  }
+  recalc();
+}
+
+/* ---------------------------------------------------------------------
+   DATA EXPORT / IMPORT
+--------------------------------------------------------------------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'ellinga-brewing-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Backup downloaded');
+}
+function importData(evt){
+  const file = evt.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    try{
+      const loaded = JSON.parse(e.target.result);
+      if(!confirm('Import will replace all current data with the backup file. Continue?')) return;
+      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
+      persist(true);
+      renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect();
+      showToast('Data imported');
+    }catch(err){ showToast('Import failed — invalid file'); }
+  };
+  reader.readAsText(file);
+  evt.target.value = '';
+}
+
+/* ---------------------------------------------------------------------
+   INVENTORY
+--------------------------------------------------------------------- */
+function renderInventory(){
+  renderInvTable('fermentables','inv-fermentables');
+  renderInvTable('hops','inv-hops');
+  renderInvTable('yeast','inv-yeast');
+  renderVessels();
+}
+function renderVessels(){
+  const body = document.getElementById('vessel-body');
+  if(!body) return;
+  const activeBatches = state.batches.filter(b=>b.status!=='done');
+  body.innerHTML = (state.vessels||[]).map((v,i)=>`
+    <tr>
+      <td><input value="${escapeAttr(v.name)}" oninput="updateVessel(${i},'name',this.value)"></td>
+      <td><input type="number" step="0.5" value="${v.capacity}" oninput="updateVessel(${i},'capacity',this.value)"></td>
+      <td><select onchange="updateVessel(${i},'status',this.value)">
+            <option value="empty" ${v.status==='empty'?'selected':''}>Empty</option>
+            <option value="full" ${v.status==='full'?'selected':''}>Full / in service</option>
+            <option value="cleaning" ${v.status==='cleaning'?'selected':''}>Cleaning</option>
+          </select></td>
+      <td><select onchange="updateVessel(${i},'batchId',this.value)">
+            <option value="">— None —</option>
+            ${activeBatches.map(b=>`<option value="${b.id}" ${v.batchId===b.id?'selected':''}>${escapeHtml(b.lotNumber||b.recipeName)}</option>`).join('')}
+          </select></td>
+      <td><button class="icon-btn" onclick="removeVessel(${i})">✕</button></td>
+    </tr>`).join('') || `<tr><td colspan="5" style="color:var(--foam-dim);">No vessels added yet.</td></tr>`;
+}
+function addVessel(){ state.vessels = state.vessels||[]; state.vessels.push({name:'Fermenter '+(state.vessels.length+1), capacity:19, status:'empty', batchId:''}); persist(); renderVessels(); }
+function updateVessel(i, field, val){ state.vessels[i][field]=val; persist(); if(field==='status'||field==='batchId') renderDashboard(); }
+function removeVessel(i){ state.vessels.splice(i,1); persist(true); renderVessels(); }
+function renderInvTable(cat, elId){
+  const body = document.getElementById(elId);
+  const rows = state.inventory[cat];
+  const listId = cat==='fermentables' ? 'fermentable-list' : (cat==='hops' ? 'hop-list' : 'yeast-list');
+  body.innerHTML = rows.map((item,i)=>`
+    <tr>
+      <td><input list="${listId}" value="${escapeAttr(item.name)}" oninput="updateInv('${cat}',${i},'name',this.value)"></td>
+      <td><input type="number" step="0.1" value="${item.qty}" oninput="updateInv('${cat}',${i},'qty',this.value)"></td>
+      <td><input type="number" step="0.5" value="${item.cost||0}" oninput="updateInv('${cat}',${i},'cost',this.value)"></td>
+      <td><input type="number" step="0.1" value="${item.lowThreshold||0}" title="Warn on dashboard when qty falls to/below this" oninput="updateInv('${cat}',${i},'lowThreshold',this.value)"></td>
+      <td><button class="icon-btn" onclick="removeInv('${cat}',${i})">✕</button></td>
+    </tr>`).join('') || `<tr><td colspan="5" style="color:var(--foam-dim);">Nothing on the shelf yet.</td></tr>`;
+  updateInvValue();
+}
+function addInvRow(cat){ state.inventory[cat].push({name:'', qty:0, cost:0, lowThreshold:0}); persist(); renderInventory(); }
+function updateInv(cat, idx, field, val){ state.inventory[cat][idx][field] = val; persist(); updateInvValue(); }
+function removeInv(cat, idx){ state.inventory[cat].splice(idx,1); persist(true); renderInventory(); }
+function updateInvValue(){
+  const fermVal = state.inventory.fermentables.reduce((s,i)=> s+(parseFloat(i.qty)||0)*(parseFloat(i.cost)||0),0);
+  const hopVal = state.inventory.hops.reduce((s,i)=> s+((parseFloat(i.qty)||0)/1000)*(parseFloat(i.cost)||0),0);
+  const yeastVal = state.inventory.yeast.reduce((s,i)=> s+(parseFloat(i.qty)||0)*(parseFloat(i.cost)||0),0);
+  const fEl = document.getElementById('inv-ferm-value');
+  const hEl = document.getElementById('inv-hop-value');
+  const yEl = document.getElementById('inv-yeast-value');
+  if(fEl) fEl.textContent = '$'+fermVal.toFixed(2);
+  if(hEl) hEl.textContent = '$'+hopVal.toFixed(2);
+  if(yEl) yEl.textContent = '$'+yeastVal.toFixed(2);
+}
+
+/* ---------------------------------------------------------------------
+   DASHBOARD
+--------------------------------------------------------------------- */
+function renderDashboard(){
+  const el = document.getElementById('dash-content');
+  if(!el) return;
+  const now = new Date();
+
+  const readyToPackage = state.batches.filter(b=>b.status==='conditioning');
+  const longFerments = state.batches.filter(b=>{
+    if(b.status!=='active') return false;
+    const days = (now - new Date(b.date)) / (1000*60*60*24);
+    return days > 14;
+  });
+  const lowStock = [];
+  ['fermentables','hops','yeast'].forEach(cat=>{
+    (state.inventory[cat]||[]).forEach(item=>{
+      const thresh = parseFloat(item.lowThreshold)||0;
+      if(thresh>0 && (parseFloat(item.qty)||0) <= thresh){
+        lowStock.push({cat, name:item.name||'(unnamed)', qty:item.qty, thresh});
+      }
+    });
+  });
+
+  function daysAgo(dateStr){ return Math.floor((now - new Date(dateStr)) / (1000*60*60*24)); }
+  function recipeCost(recipeId){
+    const r = state.recipes.find(x=>x.id===recipeId);
+    if(!r) return 0;
+    const fermCost = (r.fermentables||[]).reduce((s,f)=> s + (parseFloat(f.amount)||0)*(parseFloat(f.cost)||0), 0);
+    const hopCost = (r.hops||[]).reduce((s,h)=> s + ((parseFloat(h.amount)||0)/1000)*(parseFloat(h.cost)||0), 0);
+    const yeastCost = parseFloat(r.yeastCost)||0;
+    return fermCost + hopCost + yeastCost;
+  }
+  const activeValue = state.batches.filter(b=>b.status!=='done').reduce((s,b)=> s + recipeCost(b.recipeId), 0);
+  const thisYear = now.getFullYear();
+  const yearSpend = state.batches.filter(b=> new Date(b.date).getFullYear()===thisYear).reduce((s,b)=> s + recipeCost(b.recipeId), 0);
+  const batchesThisYear = state.batches.filter(b=> new Date(b.date).getFullYear()===thisYear).length;
+
+  let html = '';
+
+  html += `<div class="panel">
+    <h2 class="panel-title">Spend</h2>
+    <div class="stat-row" style="margin-bottom:0;">
+      <div class="stat"><div class="stat-label">Value in active batches</div><div class="stat-value">$${activeValue.toFixed(2)}</div></div>
+      <div class="stat"><div class="stat-label">Spent in ${thisYear}</div><div class="stat-value">$${yearSpend.toFixed(2)}</div></div>
+      <div class="stat"><div class="stat-label">Batches brewed in ${thisYear}</div><div class="stat-value">${batchesThisYear}</div></div>
+    </div>
+    <p class="db-hint" style="margin-top:10px;">Estimated from each batch's linked recipe at current ingredient costs — not a historical snapshot.</p>
+  </div>`;
+
+  html += `<div class="panel">
+    <h2 class="panel-title">Ready to package</h2>
+    ${readyToPackage.length===0
+      ? `<p class="page-sub" style="margin:0;">Nothing in conditioning right now.</p>`
+      : readyToPackage.map(b=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);">
+          <span>${escapeHtml(b.recipeName)} <span class="badge">${b.lotNumber||''}</span></span>
+          <button class="btn small ghost" onclick="showView('ferment');setTimeout(()=>openBatchDetail('${b.id}'),50)">Open</button>
+        </div>`).join('')}
+  </div>`;
+
+  html += `<div class="panel">
+    <h2 class="panel-title">Fermenting longer than 14 days</h2>
+    ${longFerments.length===0
+      ? `<p class="page-sub" style="margin:0;">No long-running fermentations.</p>`
+      : longFerments.map(b=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);">
+          <span>${escapeHtml(b.recipeName)} <span class="badge">${b.lotNumber||''}</span> — ${daysAgo(b.date)} days</span>
+          <button class="btn small ghost" onclick="showView('ferment');setTimeout(()=>openBatchDetail('${b.id}'),50)">Open</button>
+        </div>`).join('')}
+  </div>`;
+
+  html += `<div class="panel">
+    <h2 class="panel-title">Low stock</h2>
+    ${lowStock.length===0
+      ? `<p class="page-sub" style="margin:0;">Everything's above threshold — nothing flagged.</p>`
+      : lowStock.map(i=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);">
+          <span>${escapeHtml(i.name)} <span class="badge" style="border-color:var(--danger);color:var(--danger);">${i.cat}</span></span>
+          <span class="stat-value" style="font-size:1rem;">${i.qty} <span class="unit" style="color:var(--foam-dim);">(warn at ${i.thresh})</span></span>
+        </div>`).join('')}
+    <div class="toolbar" style="margin-top:14px;margin-bottom:0;"><button class="btn small ghost" onclick="showView('inventory')">Go to inventory</button></div>
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+/* ---------------------------------------------------------------------
+   FERMENTATION LOG
+--------------------------------------------------------------------- */
+function populateCompareSelects(){
+  const optsHtml = '<option value="">— Select —</option>' + state.batches.map(b=>`<option value="${b.id}">${escapeHtml(b.recipeName)} — ${b.lotNumber||b.date}</option>`).join('');
+  const a = document.getElementById('compare-a');
+  const b = document.getElementById('compare-b');
+  if(a){ const cur=a.value; a.innerHTML = optsHtml; a.value = cur; }
+  if(b){ const cur=b.value; b.innerHTML = optsHtml; b.value = cur; }
+}
+function renderComparison(){
+  const aId = document.getElementById('compare-a').value;
+  const bId = document.getElementById('compare-b').value;
+  const out = document.getElementById('compare-out');
+  if(!aId || !bId){ out.innerHTML = ''; return; }
+  const a = state.batches.find(x=>x.id===aId);
+  const b = state.batches.find(x=>x.id===bId);
+  function stats(batch){
+    const readings = batch.readings||[];
+    const og = readings.find(r=>r.label==='OG');
+    const last = readings[readings.length-1];
+    const ogVal = og ? parseFloat(og.gravity) : (readings[0]?parseFloat(readings[0].gravity):null);
+    const fgVal = last ? parseFloat(last.gravity) : null;
+    const abvVal = (ogVal && fgVal && readings.length>1) ? abv(ogVal,fgVal) : null;
+    return {ogVal, fgVal, abvVal, packaged:(batch.packaging||[]).length, score:batch.score||'—'};
+  }
+  const sa = stats(a), sb = stats(b);
+  const rows = [
+    ['Lot number', a.lotNumber||'—', b.lotNumber||'—'],
+    ['Brew date', a.date, b.date],
+    ['Status', a.status, b.status],
+    ['OG', sa.ogVal?sa.ogVal.toFixed(3):'—', sb.ogVal?sb.ogVal.toFixed(3):'—'],
+    ['Latest gravity', sa.fgVal?sa.fgVal.toFixed(3):'—', sb.fgVal?sb.fgVal.toFixed(3):'—'],
+    ['ABV', sa.abvVal?sa.abvVal.toFixed(1)+'%':'—', sb.abvVal?sb.abvVal.toFixed(1)+'%':'—'],
+    ['Packaging entries', sa.packaged, sb.packaged],
+    ['Tasting score', sa.score, sb.score],
+  ];
+  out.innerHTML = `<table>
+    <thead><tr><th></th><th>${escapeHtml(a.recipeName)}</th><th>${escapeHtml(b.recipeName)}</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr><td style="color:var(--foam-dim);">${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join('')}</tbody>
+  </table>`;
+}
+function renderBatchGrid(){
+  const grid = document.getElementById('batch-grid');
+  if(state.batches.length===0){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;"><div class="glyph-lg">≈</div>No batches yet. Brew a recipe to start tracking fermentation.</div>`;
+    return;
+  }
+  const filterEl = document.getElementById('batch-status-filter');
+  const statusFilter = filterEl ? filterEl.value : '';
+  const filtered = statusFilter ? state.batches.filter(b=>b.status===statusFilter) : state.batches;
+  if(filtered.length===0){
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">No batches with this status.</div>`;
+    return;
+  }
+  grid.innerHTML = filtered.slice().reverse().map(b=>{
+    const readings = b.readings||[];
+    const last = readings[readings.length-1];
+    const og = readings.find(r=>r.label==='OG');
+    const badgeClass = b.status==='active' ? 'active' : (b.status==='done' ? 'done' : '');
+    return `<div class="recipe-card" onclick="openBatchDetail('${b.id}')">
+      <div class="batch-stamp">${b.lotNumber||b.date}</div>
+      <h3>${escapeHtml(b.recipeName)||'Batch'}</h3>
+      <div class="style"><span class="badge ${badgeClass}">${b.status}</span></div>
+      <div class="mini-stats">
+        <span>OG <b>${og?og.gravity:'—'}</b></span>
+        <span>Latest <b>${last?last.gravity:'—'}</b></span>
+        <span>Packaged <b>${(b.packaging||[]).length}</b></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openBatchDetail(id){
+  currentBatchId = id;
+  const b = state.batches.find(x=>x.id===id);
+  document.getElementById('batch-detail-title').textContent = b.recipeName || 'Batch';
+  const badgeEl = document.getElementById('batch-detail-status');
+  badgeEl.textContent = b.status;
+  badgeEl.className = 'badge ' + (b.status==='active'?'active':(b.status==='done'?'done':''));
+  document.getElementById('b-lot').value = b.lotNumber || '—';
+  document.getElementById('b-brewedby').value = b.brewedBy || '—';
+  document.getElementById('b-date').value = b.date;
+  document.getElementById('b-status').value = b.status;
+  document.getElementById('b-notes').value = b.notes||'';
+  document.getElementById('b-score').value = b.score||'';
+  document.getElementById('b-tasting').value = b.tasting||'';
+  renderGravityRows();
+  renderPackagingRows();
+  document.getElementById('batch-detail').style.display = 'block';
+  document.getElementById('batch-detail').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function closeBatchDetail(){
+  document.getElementById('batch-detail').style.display = 'none';
+  currentBatchId = null;
+}
+function deleteBatch(){
+  if(!currentBatchId) return;
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  if(!b) return;
+  if(!confirm(`Delete batch ${b.lotNumber||''} (${b.recipeName||'untitled'})? This removes its gravity readings, packaging log, and tasting notes permanently.`)) return;
+  // free up any vessel that was assigned to this batch
+  (state.vessels||[]).forEach(v=>{ if(v.batchId===currentBatchId) v.batchId=''; });
+  state.batches = state.batches.filter(x=>x.id!==currentBatchId);
+  persist(true);
+  closeBatchDetail();
+  renderBatchGrid();
+  renderVessels();
+  renderDashboard();
+  showToast('Batch deleted');
+}
+function saveBatchMeta(){
+  if(!currentBatchId) return;
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.date = document.getElementById('b-date').value;
+  b.status = document.getElementById('b-status').value;
+  b.notes = document.getElementById('b-notes').value;
+  b.score = document.getElementById('b-score').value;
+  b.tasting = document.getElementById('b-tasting').value;
+  persist(true);
+  renderBatchGrid();
+  const badgeEl = document.getElementById('batch-detail-status');
+  badgeEl.textContent = b.status;
+  badgeEl.className = 'badge ' + (b.status==='active'?'active':(b.status==='done'?'done':''));
+}
+function renderGravityRows(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  const container = document.getElementById('gravity-rows');
+  container.innerHTML = (b.readings||[]).map((r,i)=>`
+    <div class="log-row">
+      <div class="field"><label>Date</label><input type="date" value="${r.date}" onchange="updateReading(${i},'date',this.value)"></div>
+      <div class="field"><label>Gravity</label><input type="number" step="0.001" value="${r.gravity}" onchange="updateReading(${i},'gravity',this.value)"></div>
+      <div class="field"><label>Temp (°C)</label><input type="number" step="0.5" value="${r.temp!==undefined?r.temp:''}" placeholder="—" onchange="updateReading(${i},'temp',this.value)"></div>
+      <div class="field"><label>Label</label><input value="${escapeAttr(r.label||'')}" placeholder="OG/FG/day 3…" onchange="updateReading(${i},'label',this.value)"></div>
+      <div class="field"><label>Note ${r.loggedBy?('— '+escapeHtml(r.loggedBy)):''}</label><input value="${escapeAttr(r.note||'')}" onchange="updateReading(${i},'note',this.value)"></div>
+      <button class="icon-btn" style="align-self:end;margin-bottom:9px;" onclick="removeReading(${i})">✕</button>
+    </div>`).join('');
+  computeBatchABV();
+  renderFermentationChart();
+}
+function addGravityRow(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.readings.push({date:new Date().toISOString().slice(0,10), gravity:'1.010', temp:'', label:'', note:'', loggedBy:brewerName||''});
+  persist();
+  renderGravityRows();
+}
+function updateReading(idx, field, val){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.readings[idx][field] = val;
+  persist();
+  computeBatchABV();
+  renderBatchGrid();
+  renderFermentationChart();
+}
+function removeReading(idx){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.readings.splice(idx,1);
+  persist(true);
+  renderGravityRows();
+}
+// Self-contained SVG line chart — no external library, so it always
+// renders regardless of network conditions, ad blockers, or CDN issues.
+function renderFermentationChart(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  if(!b) return;
+  const wrap = document.getElementById('fermentation-chart-wrap');
+  const fallback = document.getElementById('fermentation-chart-fallback');
+  if(!wrap) return;
+
+  const readings = (b.readings||[]).slice()
+    .filter(r=> r.date && r.gravity!=='' && r.gravity!=null)
+    .sort((x,y)=> new Date(x.date)-new Date(y.date));
+
+  if(readings.length < 2){
+    fallback.style.display = 'flex';
+    const existingSvg = wrap.querySelector('svg');
+    if(existingSvg) existingSvg.remove();
+    return;
+  }
+  fallback.style.display = 'none';
+
+  const gravityVals = readings.map(r=>parseFloat(r.gravity));
+  const tempReadings = readings.map(r=> (r.temp!==undefined && r.temp!=='' && r.temp!=null) ? parseFloat(r.temp) : null);
+  const hasTemp = tempReadings.some(v=>v!==null);
+
+  // colors follow the current theme so it looks right in light mode too
+  const cs = getComputedStyle(document.body);
+  const gridColor = cs.getPropertyValue('--line').trim() || '#3A3B40';
+  const dimColor = cs.getPropertyValue('--foam-dim').trim() || '#9A9CA2';
+  const textColor = cs.getPropertyValue('--foam').trim() || '#E9E9EA';
+  const gravityColor = cs.getPropertyValue('--amber-bright').trim() || '#D89B5C';
+  const tempColor = cs.getPropertyValue('--hop-green').trim() || '#7C8F7A';
+
+  const W = wrap.clientWidth || 800, H = 280;
+  const padL = 58, padR = hasTemp ? 50 : 16, padT = 20, padB = 44;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
+
+  const gMin = Math.min(...gravityVals), gMax = Math.max(...gravityVals);
+  const gPad = Math.max(0.002, (gMax-gMin)*0.15);
+  const gLo = gMin-gPad, gHi = gMax+gPad;
+
+  let tLo=0, tHi=1;
+  if(hasTemp){
+    const tVals = tempReadings.filter(v=>v!==null);
+    tLo = Math.min(...tVals); tHi = Math.max(...tVals);
+    const tPad = Math.max(1, (tHi-tLo)*0.2);
+    tLo -= tPad; tHi += tPad;
+  }
+
+  const xFor = i => padL + (readings.length===1 ? plotW/2 : (i/(readings.length-1))*plotW);
+  const yForG = v => padT + plotH - ((v-gLo)/(gHi-gLo))*plotH;
+  const yForT = v => padT + plotH - ((v-tLo)/(tHi-tLo))*plotH;
+
+  const gridLines = 4;
+  let gridSvg = '';
+  for(let i=0;i<=gridLines;i++){
+    const y = padT + (plotH/gridLines)*i;
+    gridSvg += `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="${gridColor}" stroke-width="1"/>`;
+    const gVal = gHi - ((gHi-gLo)/gridLines)*i;
+    gridSvg += `<text x="${padL-8}" y="${y+4}" text-anchor="end" font-size="11" fill="${dimColor}" font-family="monospace">${gVal.toFixed(3)}</text>`;
+    if(hasTemp){
+      const tVal = tHi - ((tHi-tLo)/gridLines)*i;
+      gridSvg += `<text x="${W-padR+8}" y="${y+4}" text-anchor="start" font-size="11" fill="${dimColor}" font-family="monospace">${tVal.toFixed(0)}°</text>`;
+    }
+  }
+
+  const gravityPoints = readings.map((r,i)=>`${xFor(i)},${yForG(parseFloat(r.gravity))}`).join(' ');
+  let tempSegments = '';
+  if(hasTemp){
+    let path = '', drawing = false;
+    readings.forEach((r,i)=>{
+      const v = tempReadings[i];
+      if(v===null){ drawing=false; return; }
+      const cmd = drawing ? 'L' : 'M';
+      path += `${cmd}${xFor(i)},${yForT(v)} `;
+      drawing = true;
+    });
+    tempSegments = `<path d="${path}" fill="none" stroke="${tempColor}" stroke-width="2.5"/>`;
+  }
+
+  const gravityCircles = readings.map((r,i)=>{
+    const x=xFor(i), y=yForG(parseFloat(r.gravity));
+    const title = `${r.date}${r.label?' — '+r.label:''}: ${parseFloat(r.gravity).toFixed(3)} SG`;
+    return `<circle cx="${x}" cy="${y}" r="4" fill="${gravityColor}"><title>${escapeHtml(title)}</title></circle>`;
+  }).join('');
+  const tempCircles = hasTemp ? readings.map((r,i)=>{
+    const v = tempReadings[i];
+    if(v===null) return '';
+    const x=xFor(i), y=yForT(v);
+    const title = `${r.date}: ${v}°C`;
+    return `<circle cx="${x}" cy="${y}" r="4" fill="${tempColor}"><title>${escapeHtml(title)}</title></circle>`;
+  }).join('') : '';
+
+  // x-axis labels: show every Nth to avoid crowding on long fermentations
+  const maxLabels = Math.max(3, Math.floor(plotW/70));
+  const step = Math.max(1, Math.ceil(readings.length/maxLabels));
+  let xLabels = '';
+  readings.forEach((r,i)=>{
+    if(i%step!==0 && i!==readings.length-1) return;
+    const short = r.date.slice(5); // MM-DD
+    xLabels += `<text x="${xFor(i)}" y="${H-padB+18}" text-anchor="middle" font-size="10.5" fill="${dimColor}" font-family="monospace">${short}</text>`;
+  });
+
+  const legend = `
+    <g transform="translate(${padL}, 4)">
+      <circle cx="0" cy="0" r="4" fill="${gravityColor}"/><text x="8" y="4" font-size="11" fill="${textColor}" font-family="sans-serif">Gravity (SG)</text>
+      ${hasTemp ? `<circle cx="120" cy="0" r="4" fill="${tempColor}"/><text x="128" y="4" font-size="11" fill="${textColor}" font-family="sans-serif">Temp (°C)</text>` : ''}
+    </g>`;
+
+  const svg = `
+    <svg width="100%" height="${H}" viewBox="0 0 ${W} ${H}" style="overflow:visible;">
+      ${gridSvg}
+      ${legend}
+      ${xLabels}
+      <polyline points="${gravityPoints}" fill="none" stroke="${gravityColor}" stroke-width="2.5"/>
+      ${tempSegments}
+      ${gravityCircles}
+      ${tempCircles}
+    </svg>`;
+
+  const existingSvg = wrap.querySelector('svg');
+  if(existingSvg) existingSvg.remove();
+  wrap.insertAdjacentHTML('beforeend', svg);
+}
+function computeBatchABV(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  const readings = b.readings||[];
+  if(readings.length<2){ document.getElementById('batch-abv-out').innerHTML = '—'; return; }
+  const og = parseFloat(readings[0].gravity)||1;
+  const fg = parseFloat(readings[readings.length-1].gravity)||1;
+  document.getElementById('batch-abv-out').innerHTML = abv(og,fg).toFixed(1) + '<span class="unit">%</span>';
+}
+function renderPackagingRows(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.packaging = b.packaging || [];
+  const container = document.getElementById('packaging-rows');
+  container.innerHTML = b.packaging.map((p,i)=>`
+    <div class="pack-row">
+      <div class="field"><label>Date</label><input type="date" value="${p.date}" onchange="updatePackaging(${i},'date',this.value)"></div>
+      <div class="field"><label>Type</label>
+        <select onchange="updatePackaging(${i},'type',this.value)">
+          <option value="Keg" ${p.type==='Keg'?'selected':''}>Keg</option>
+          <option value="Bottle" ${p.type==='Bottle'?'selected':''}>Bottle</option>
+        </select>
+      </div>
+      <div class="field"><label>Qty</label><input type="number" step="1" value="${p.quantity}" onchange="updatePackaging(${i},'quantity',this.value)"></div>
+      <div class="field"><label>Size (L)</label><input type="number" step="0.1" value="${p.size}" onchange="updatePackaging(${i},'size',this.value)"></div>
+      <div class="field"><label>Notes</label><input value="${escapeAttr(p.notes||'')}" onchange="updatePackaging(${i},'notes',this.value)"></div>
+      <button class="icon-btn" style="align-self:end;margin-bottom:9px;" onclick="removePackaging(${i})">✕</button>
+    </div>`).join('') || `<p class="page-sub" style="margin:0 0 10px 0;">Nothing packaged yet.</p>`;
+}
+function addPackagingRow(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.packaging = b.packaging || [];
+  b.packaging.push({date:new Date().toISOString().slice(0,10), type:'Keg', quantity:1, size:19, notes:'', loggedBy:brewerName||''});
+  persist();
+  renderPackagingRows();
+}
+function updatePackaging(idx, field, val){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.packaging[idx][field] = val;
+  persist();
+  renderBatchGrid();
+}
+function removePackaging(idx){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  b.packaging.splice(idx,1);
+  persist(true);
+  renderPackagingRows();
+  renderBatchGrid();
+}
+
+/* ---------------------------------------------------------------------
+   PRINTABLE BREW SHEET
+--------------------------------------------------------------------- */
+function printLabels(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  if(!b){ showToast('Open a batch first'); return; }
+  const r = state.recipes.find(x=>x.id===b.recipeId);
+  const countStr = prompt('How many labels to print?', '12');
+  if(countStr===null) return;
+  const count = Math.max(1, parseInt(countStr)||12);
+  const readings = b.readings||[];
+  const og = readings.find(x=>x.label==='OG');
+  const last = readings[readings.length-1];
+  const abvVal = (og && last && readings.length>1) ? abv(parseFloat(og.gravity), parseFloat(last.gravity)) : null;
+  const style = r ? r.style : '';
+  let cards = '';
+  for(let i=0;i<count;i++){
+    cards += `<div class="label-card">
+      <div class="lbl-name">${escapeHtml(b.recipeName)||'Untitled'}</div>
+      <div class="lbl-style">${escapeHtml(style)||''}</div>
+      <div class="lbl-stats">${abvVal!==null ? abvVal.toFixed(1)+'% ABV' : ''} ${og?'· OG '+og.gravity:''}</div>
+      <div class="lbl-lot">LOT ${b.lotNumber||''} — ${b.date}</div>
+    </div>`;
+  }
+  document.getElementById('print-sheet').innerHTML = `<div class="label-grid">${cards}</div>`;
+  window.print();
+}
+function printBrewSheet(id){
+  if(!id) id = currentRecipeId;
+  const r = state.recipes.find(x=>x.id===id);
+  if(!r){ showToast('Save the recipe first'); return; }
+  const og = estimateOG(r.fermentables, r.batchSize, r.efficiency);
+  const fg = estimateFG(og, r.attenuation);
+  const ibu = estimateIBU(r.hops, og, r.batchSize, r.boilTime);
+  const ebc = estimateEBC(r.fermentables, r.batchSize);
+
+  const fermRows = (r.fermentables||[]).map(f=>`
+    <tr><td><span class="ps-check"></span></td><td>${escapeHtml(f.name)||'—'}</td><td>${f.amount} kg</td><td>${f.ebc} EBC</td></tr>
+  `).join('') || `<tr><td colspan="4">No fermentables listed.</td></tr>`;
+
+  const hopRows = (r.hops||[]).map(h=>`
+    <tr><td><span class="ps-check"></span></td><td>${escapeHtml(h.name)||'—'}</td><td>${h.amount} g</td><td>${h.aa}% AA</td><td>${h.time} min</td><td>${escapeHtml(h.use)}</td></tr>
+  `).join('') || `<tr><td colspan="6">No hops listed.</td></tr>`;
+
+  const mashRows = (r.mashSteps||[]).map(m=>`
+    <tr><td>${escapeHtml(m.name)}</td><td>${m.temp} °C</td><td>${m.time} min</td></tr>
+  `).join('') || `<tr><td colspan="3">Single infusion — see target mash temp above.</td></tr>`;
+
+  const linkedBatches = state.batches.filter(b=>b.recipeId===r.id).sort((x,y)=> new Date(y.date)-new Date(x.date));
+  const latestBatch = linkedBatches[0];
+
+  const today = new Date().toLocaleDateString();
+
+  document.getElementById('print-sheet').innerHTML = `
+    <div class="ps-wrap">
+      <div class="ps-head">
+        <div>
+          <h1>${escapeHtml(r.name)||'Untitled recipe'}</h1>
+          <div class="ps-style">${escapeHtml(r.style)||''}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="ps-date">Ellinga Brewing — printed ${today}<br>Batch size: ${r.batchSize} L &nbsp;·&nbsp; Boil: ${r.boilTime} min</div>
+          ${latestBatch ? `<div style="margin-top:8px;border:2px solid #111;padding:4px 10px;display:inline-block;font-family:var(--font-mono);font-weight:600;letter-spacing:0.04em;">LOT ${latestBatch.lotNumber}</div>` : ''}
+        </div>
+      </div>
+
+      <div class="ps-stats">
+        <div><div class="ps-label">Target OG</div><div class="ps-val">${og.toFixed(3)}</div></div>
+        <div><div class="ps-label">Target FG</div><div class="ps-val">${fg.toFixed(3)}</div></div>
+        <div><div class="ps-label">Target ABV</div><div class="ps-val">${abv(og,fg).toFixed(1)}%</div></div>
+        <div><div class="ps-label">IBU</div><div class="ps-val">${ibu.toFixed(0)}</div></div>
+        <div><div class="ps-label">EBC</div><div class="ps-val">${ebc.toFixed(0)}</div></div>
+        <div><div class="ps-label">Efficiency</div><div class="ps-val">${r.efficiency}%</div></div>
+      </div>
+
+      <div class="ps-section-title">Grain bill</div>
+      <table><thead><tr><th></th><th>Fermentable</th><th>Amount</th><th>Color</th></tr></thead><tbody>${fermRows}</tbody></table>
+
+      <div class="ps-section-title">Hop schedule</div>
+      <table><thead><tr><th></th><th>Hop</th><th>Amount</th><th>Alpha acid</th><th>Time</th><th>Use</th></tr></thead><tbody>${hopRows}</tbody></table>
+
+      <div class="ps-section-title">Mash schedule</div>
+      <table><thead><tr><th>Step</th><th>Temp</th><th>Time</th></tr></thead><tbody>${mashRows}</tbody></table>
+
+      <div class="ps-two-col">
+        <div>
+          <div class="ps-section-title">Yeast &amp; fermentation</div>
+          <div>Strain: ${escapeHtml(r.yeast)||'____________________'}</div>
+          <div>Target ferm. temp: ${escapeHtml(String(r.fermTemp||''))||'______'} °C</div>
+          <div style="margin-top:8px;">Pitch date: <span class="ps-notes-lines" style="display:inline-block;width:140px;"></span></div>
+        </div>
+        <div>
+          <div class="ps-section-title">Brew-day checks</div>
+          <div>Pre-boil gravity: _______ &nbsp; Pre-boil volume: _______ L</div>
+          <div>Sparge temp: _______ °C &nbsp; Post-boil volume: _______ L</div>
+        </div>
+      </div>
+
+      <div class="ps-section-title">Brew-day log</div>
+      <div class="ps-log-grid">
+        <div class="ps-hdr">Time</div><div class="ps-hdr">Step</div><div class="ps-hdr">Reading</div><div class="ps-hdr">Temp</div><div class="ps-hdr">Notes</div>
+        <div></div><div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div><div></div>
+        <div></div><div></div><div></div><div></div><div></div>
+      </div>
+
+      <div class="ps-section-title">Notes</div>
+      <div>${escapeHtml(r.notes)||''}</div>
+      <div class="ps-notes-lines"></div>
+      <div class="ps-notes-lines"></div>
+
+      <div class="ps-footer">Ellinga Brewing — brew sheet</div>
+    </div>
+  `;
+  window.print();
+}
+
+/* ---------------------------------------------------------------------
+   UTIL
+--------------------------------------------------------------------- */
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(s){ return escapeHtml(s); }
+
+/* ---------------------------------------------------------------------
+   INIT
+--------------------------------------------------------------------- */
+renderNav();
+showView('dashboard');
+populatePresetSelect();
+buildDatalists();
+calcABV(); calcHopAA(); calcStrike(); calcWater(); calcPriming(); calcForcedCarb(); calcHydroCorrection(); calcYeastStarter(); calcSalesCosting();
+
+(async function boot(){
+  await detectStorageBackend();
+  updateStorageModeBanner();
+  await loadState();
+  await loadTheme();
+  await loadBrewerName();
+})();
+</script>
+</body>
+</html>
