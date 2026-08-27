@@ -157,6 +157,7 @@
 
   datalist{}
   .db-hint{font-family:var(--font-mono);font-size:0.68rem;color:var(--foam-dim);margin-top:4px;min-height:14px;}
+  .ppm-quick-entry{width:64px;display:inline-block;padding:3px 5px;font-size:0.75rem;margin-left:4px;}
 
   @media (prefers-reduced-motion: reduce){ *{animation:none !important;transition:none !important;} }
 
@@ -523,20 +524,66 @@
 
       <div class="panel">
         <h2 class="panel-title">Water salt additions</h2>
-        <p class="page-sub" style="margin-bottom:14px;">Estimated ppm contribution per addition, for a given batch volume. Every salt is a cation+anion pair, so nothing here affects only one ion — that's basic chemistry (charge balance), not a limitation of this calculator.</p>
+        <p class="page-sub" style="margin-bottom:14px;">Estimated ppm contribution per addition, for a given batch volume. Every salt is a cation+anion pair, so nothing here affects only one ion — that's basic chemistry (charge balance), not a limitation of this calculator. Enter grams directly, or use the "or target ppm" quick-entry under each salt to work backwards from a desired ppm.</p>
+        <div class="field" style="max-width:200px;margin-bottom:16px;"><label>Batch volume (L)</label><input id="w-vol" type="number" step="0.5" value="19" oninput="calcWater()"></div>
         <div class="grid cols-4" style="margin-bottom:16px;">
-          <div class="field"><label>Batch volume (L)</label><input id="w-vol" type="number" step="0.5" value="19" oninput="calcWater()"></div>
-          <div class="field"><label>Gypsum, CaSO₄ (g)</label><input id="w-gypsum" type="number" step="0.1" value="0" oninput="calcWater()"></div>
-          <div class="field"><label>Calcium chloride, CaCl₂ (g)</label><input id="w-cacl2" type="number" step="0.1" value="0" oninput="calcWater()"></div>
-          <div class="field"><label>Epsom salt, MgSO₄ (g)</label><input id="w-epsom" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+          <div class="field">
+            <label>Gypsum, CaSO₄ (g)</label>
+            <input id="w-gypsum" type="number" step="0.1" value="0" oninput="calcWater()">
+            <div class="db-hint">or target SO₄²⁻ <input id="w-gypsum-ppm" type="number" step="1" placeholder="ppm" class="ppm-quick-entry" onchange="setSaltFromPpm('w-gypsum','w-gypsum-ppm',557.7)"></div>
+          </div>
+          <div class="field">
+            <label>Calcium chloride, CaCl₂ (g)</label>
+            <input id="w-cacl2" type="number" step="0.1" value="0" oninput="calcWater()">
+            <div class="db-hint">or target Cl⁻ <input id="w-cacl2-ppm" type="number" step="1" placeholder="ppm" class="ppm-quick-entry" onchange="setSaltFromPpm('w-cacl2','w-cacl2-ppm',482)"></div>
+          </div>
+          <div class="field">
+            <label>Epsom salt, MgSO₄ (g)</label>
+            <input id="w-epsom" type="number" step="0.1" value="0" oninput="calcWater()">
+            <div class="db-hint">or target Mg²⁺ <input id="w-epsom-ppm" type="number" step="1" placeholder="ppm" class="ppm-quick-entry" onchange="setSaltFromPpm('w-epsom','w-epsom-ppm',98.6)"></div>
+          </div>
+          <div class="field">
+            <label>Table salt, NaCl (g)</label>
+            <input id="w-nacl" type="number" step="0.1" value="0" oninput="calcWater()">
+            <div class="db-hint">or target Cl⁻ <input id="w-nacl-ppm" type="number" step="1" placeholder="ppm" class="ppm-quick-entry" onchange="setSaltFromPpm('w-nacl','w-nacl-ppm',607)"></div>
+          </div>
         </div>
         <div class="grid cols-4" style="margin-bottom:16px;">
-          <div class="field"><label>Table salt, NaCl (g)</label><input id="w-nacl" type="number" step="0.1" value="0" oninput="calcWater()"></div>
-          <div class="field"><label>Baking soda, NaHCO₃ (g)</label><input id="w-soda" type="number" step="0.1" value="0" oninput="calcWater()"></div>
-          <div class="field"><label>Chalk, CaCO₃ (g)</label><input id="w-chalk" type="number" step="0.1" value="0" oninput="calcWater()"></div>
+          <div class="field">
+            <label>Baking soda, NaHCO₃ (g)</label>
+            <input id="w-soda" type="number" step="0.1" value="0" oninput="calcWater()">
+            <div class="db-hint">or target HCO₃⁻ <input id="w-soda-ppm" type="number" step="1" placeholder="ppm" class="ppm-quick-entry" onchange="setSaltFromPpm('w-soda','w-soda-ppm',726)"></div>
+          </div>
+          <div class="field">
+            <label>Chalk, CaCO₃ (g)</label>
+            <input id="w-chalk" type="number" step="0.1" value="0" oninput="calcWater()">
+            <div class="db-hint">or target HCO₃⁻ <input id="w-chalk-ppm" type="number" step="1" placeholder="ppm" class="ppm-quick-entry" onchange="setSaltFromPpm('w-chalk','w-chalk-ppm',1219.4)"></div>
+          </div>
         </div>
-        <p class="db-hint" style="margin-bottom:14px;">Chalk adds Ca²⁺ paired with alkalinity (HCO₃⁻) instead of Cl⁻ or SO₄²⁻ — useful for high-calcium, high-alkalinity profiles without dragging up chloride. It's poorly soluble though: it dissolves reliably only with enough CO₂/acid present (e.g. in an active mash), so results in plain strike water can be inconsistent — dose conservatively and expect some settling.</p>
+        <p class="db-hint" style="margin-bottom:14px;">The "or target ppm" fields solve for that one salt in isolation (ignoring what the other salts you've entered already contribute to the same ion) — check the result row below and nudge if another salt is also feeding that ion. Chalk adds Ca²⁺ paired with alkalinity instead of Cl⁻/SO₄²⁻, but is poorly soluble outside an active mash — dose conservatively.</p>
         <div class="stat-row" id="water-out" style="margin-bottom:0;"></div>
+      </div>
+
+      <div class="panel">
+        <h2 class="panel-title">Mash pH adjustment</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Estimates for shifting mash pH with acid (to lower) or a base (to raise). Published dosing rates for this vary meaningfully by source — roughly 0.2–0.5 mL of 88% lactic per kg grain per 0.1 pH point depending on your grain bill and water alkalinity — so treat this as a starting point, not a precise dose. Always measure mash pH directly with a meter or strips, add half the suggested amount first, stir, wait a few minutes, and re-measure before adding more.</p>
+        <div class="grid cols-4" style="margin-bottom:16px;">
+          <div class="field"><label>Grain bill (kg)</label><input id="ph-grain" type="number" step="0.1" value="5" oninput="calcPhAdjust()"></div>
+          <div class="field"><label>Current / measured pH</label><input id="ph-current" type="number" step="0.01" value="5.6" oninput="calcPhAdjust()"></div>
+          <div class="field"><label>Target pH</label><input id="ph-target" type="number" step="0.01" value="5.4" oninput="calcPhAdjust()"></div>
+          <div class="field"><label>Adjustment type</label>
+            <select id="ph-agent" onchange="calcPhAdjust()">
+              <option value="lactic">Lactic acid (88%) — lowers pH</option>
+              <option value="phosphoric">Phosphoric acid (10%) — lowers pH</option>
+              <option value="soda-ash">Sodium carbonate (soda ash) — raises pH</option>
+            </select>
+          </div>
+        </div>
+        <div class="stat-row" style="margin-bottom:0;">
+          <div class="stat"><div class="stat-label">pH change needed</div><div class="stat-value" id="ph-delta-out">—</div></div>
+          <div class="stat"><div class="stat-label">Estimated dose</div><div class="stat-value" id="ph-dose-out">—</div></div>
+        </div>
+        <p class="db-hint" id="ph-direction-warning" style="margin-top:10px;"></p>
       </div>
 
       <div class="panel">
@@ -551,9 +598,12 @@
 
       <div class="panel">
         <h2 class="panel-title">Target water calculator</h2>
-        <p class="page-sub" style="margin-bottom:14px;">Suggests salt additions to approach a target profile, assuming you're starting from RO/distilled water. Doesn't account for existing tap water minerals — for that, subtract your tap profile from the target first.</p>
-        <div class="grid cols-2" style="margin-bottom:16px;">
+        <p class="page-sub" style="margin-bottom:14px;">Suggests salt additions to get from your source water to a target profile. Select your actual source water (set up custom profiles under Equipment &amp; data) for accurate results — or leave as RO/Distilled to start from zero.</p>
+        <div class="grid cols-3" style="margin-bottom:16px;">
           <div class="field"><label>Batch volume (L)</label><input id="t-vol" type="number" step="0.5" value="19" oninput="calcTargetWater()"></div>
+          <div class="field"><label>Source water</label>
+            <select id="t-source" onchange="calcTargetWater()"><option value="">RO / Distilled (0 ppm all round)</option></select>
+          </div>
           <div class="field"><label>Target profile</label>
             <select id="t-preset" onchange="calcTargetWater()"><option value="">— Select a profile —</option></select>
           </div>
@@ -686,8 +736,33 @@
       </div>
 
       <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">AI Description</h2><span class="badge" id="ai-key-status-badge">not set</span></div>
+        <p class="page-sub" style="margin-bottom:14px;">Powers the "✨ Generate from ingredients" button on each recipe. Needs your own Anthropic API key — this app has no server, so it can't come with one built in. Costs are usage-based and tiny for short descriptions (well under a cent each at typical usage).</p>
+        <div id="ai-key-setup-steps" class="db-hint" style="line-height:1.7;margin-bottom:14px;">
+          1. Go to <b>console.anthropic.com</b> → sign up / log in.<br>
+          2. Add billing details (Settings → Billing) — pay-as-you-go, no minimum.<br>
+          3. Go to <b>API Keys</b> → Create Key → copy it (starts with <code>sk-ant-...</code>).<br>
+          4. Paste it below and click Save. It's stored only in this browser, never synced anywhere — repeat on each device you want this feature on.
+        </div>
+        <div class="field" style="max-width:420px;margin-bottom:12px;">
+          <label>Anthropic API key</label>
+          <input id="anthropic-key-input" type="password" placeholder="sk-ant-...">
+        </div>
+        <div class="toolbar" style="margin-bottom:0;">
+          <button class="btn" onclick="saveAnthropicKey();updateAiKeyBadge();">Save</button>
+          <button class="btn danger" onclick="document.getElementById('anthropic-key-input').value='';saveAnthropicKey();updateAiKeyBadge();">Remove</button>
+        </div>
+      </div>
+
+      <div class="panel">
         <div class="section-head"><h2 class="panel-title" style="margin:0;">Equipment profiles</h2><button class="btn small ghost" onclick="addEquipment()">+ Add profile</button></div>
         <div id="equipment-list"></div>
+      </div>
+
+      <div class="panel">
+        <div class="section-head"><h2 class="panel-title" style="margin:0;">Custom water profiles</h2><button class="btn small ghost" onclick="addCustomWaterProfile()">+ Add profile</button></div>
+        <p class="page-sub" style="margin-bottom:14px;">Save your actual source water — e.g. your town's mains supply — so the Target water calculator can work out exactly what to add or whether you're already close, instead of assuming RO/distilled.</p>
+        <div id="custom-water-list"></div>
       </div>
 
       <div class="panel">
@@ -790,6 +865,17 @@
         </div>
 
         <div class="divider"></div>
+        <h3 style="font-family:var(--font-display);font-size:1rem;color:var(--foam);margin:0 0 10px 0;">Brew day / batch log</h3>
+        <p class="page-sub" style="margin-bottom:14px;">Timestamped notes for anything worth recording while this batch is active — brew day, fermentation, conditioning. Each entry is stamped with the date, time, and whoever's logged in (set your name in the sidebar).</p>
+        <div class="field" style="margin-bottom:10px;">
+          <textarea id="batch-log-input" rows="2" placeholder="e.g. Krausen has dropped, gravity steady, temp holding at 18°C…"></textarea>
+        </div>
+        <div class="toolbar" style="margin-bottom:16px;">
+          <button class="btn small ghost" onclick="addBatchLogEntry()">+ Add timestamped note</button>
+        </div>
+        <div id="batch-log-rows"></div>
+
+        <div class="divider"></div>
         <h3 style="font-family:var(--font-display);font-size:1rem;color:var(--foam);margin:0 0 10px 0;">Tasting notes</h3>
         <div class="grid cols-2" style="margin-bottom:14px;">
           <div class="field"><label>Overall score (/50)</label><input id="b-score" type="number" min="0" max="50" onchange="saveBatchMeta()"></div>
@@ -797,7 +883,7 @@
         <textarea id="b-tasting" rows="3" placeholder="Appearance, aroma, flavor, mouthfeel…" onchange="saveBatchMeta()"></textarea>
 
         <div class="divider"></div>
-        <label>Batch notes</label>
+        <label>Summary notes</label>
         <textarea id="b-notes" rows="3" onchange="saveBatchMeta()"></textarea>
 
         <div class="toolbar" style="margin-top:18px;margin-bottom:0;">
@@ -815,7 +901,7 @@
 /* ---------------------------------------------------------------------
    STATE + STORAGE (shared — visible to anyone with this artifact link)
 --------------------------------------------------------------------- */
-let state = { recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] };
+let state = { recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [], customWaterProfiles: [] };
 let currentRecipeId = null;
 let currentBatchId = null;
 
@@ -851,6 +937,26 @@ function saveFirebaseConfig(cfg){
 }
 function clearFirebaseConfig(){
   localStorage.removeItem(FIREBASE_CONFIG_KEY);
+}
+
+const ANTHROPIC_KEY_STORAGE = 'ellinga-anthropic-key'; // stored locally per device, never synced
+function getAnthropicKey(){
+  try{ return localStorage.getItem(ANTHROPIC_KEY_STORAGE) || ''; }catch(e){ return ''; }
+}
+function saveAnthropicKey(){
+  const val = document.getElementById('anthropic-key-input').value.trim();
+  try{
+    if(val) localStorage.setItem(ANTHROPIC_KEY_STORAGE, val);
+    else localStorage.removeItem(ANTHROPIC_KEY_STORAGE);
+    showToast(val ? 'API key saved to this device' : 'API key removed');
+  }catch(e){ showToast('Could not save key'); }
+}
+function updateAiKeyBadge(){
+  const badge = document.getElementById('ai-key-status-badge');
+  if(!badge) return;
+  const has = !!getAnthropicKey();
+  badge.textContent = has ? 'key saved' : 'not set';
+  badge.className = 'badge' + (has ? ' active' : '');
 }
 
 async function tryInitFirebase(){
@@ -907,8 +1013,8 @@ function attachFirebaseListener(){
     if(val === firebaseRemoteApplyGuard) return; // our own write echoing back
     try{
       const loaded = JSON.parse(val);
-      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
-      renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect(); populateSalesRecipeSelect(); renderDashboard();
+      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [], customWaterProfiles: [] }, loaded);
+      renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect(); populateSalesRecipeSelect(); populateAllWaterProfileSelects(); renderDashboard();
       if(document.getElementById('batch-detail') && document.getElementById('batch-detail').style.display==='block' && currentBatchId){
         const stillExists = state.batches.find(b=>b.id===currentBatchId);
         if(stillExists){ renderGravityRows(); renderPackagingRows(); } else { closeBatchDetail(); }
@@ -994,7 +1100,7 @@ async function connectFirebase(){
   const remoteVal = remote.val();
   if(remoteVal){
     const loaded = JSON.parse(remoteVal);
-    state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
+    state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [], customWaterProfiles: [] }, loaded);
     showToast('Connected — pulled existing synced data');
   } else {
     await firebaseDb.ref('ellinga-brewing/'+STORAGE_KEY).set(JSON.stringify(state));
@@ -1003,7 +1109,7 @@ async function connectFirebase(){
   storageBackend = 'firebase';
   attachFirebaseListener();
   updateStorageModeBanner();
-  renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect(); populateSalesRecipeSelect(); renderDashboard();
+  renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect(); populateSalesRecipeSelect(); populateAllWaterProfileSelects(); renderDashboard();
   setSaveIndicator('saved');
 }
 
@@ -1022,7 +1128,7 @@ async function loadState(){
     const res = await storageGet(STORAGE_KEY);
     if(res && res.value){
       const loaded = JSON.parse(res.value);
-      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
+      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [], customWaterProfiles: [] }, loaded);
     }
   }catch(e){ /* no data yet, or no storage backend */ }
   renderRecipeGrid();
@@ -1031,6 +1137,7 @@ async function loadState(){
   renderEquipmentList();
   populateEquipmentSelect();
   populateSalesRecipeSelect();
+  populateAllWaterProfileSelects();
   renderDashboard();
   setSaveIndicator(storageBackend==='none' ? 'unavailable' : 'saved');
 }
@@ -1490,9 +1597,13 @@ function showView(id){
   if(id==='sales'){ populateSalesRecipeSelect(); calcSalesCosting(); }
   if(id==='equipment'){
     renderEquipmentList();
+    renderCustomWaterList();
     const cfg = getFirebaseConfig();
     const inputEl = document.getElementById('firebase-config-input');
     if(inputEl && cfg && !inputEl.value) inputEl.value = JSON.stringify(cfg, null, 2);
+    const keyInput = document.getElementById('anthropic-key-input');
+    if(keyInput && !keyInput.value) keyInput.value = getAnthropicKey();
+    updateAiKeyBadge();
   }
   if(id==='dashboard'){ renderDashboard(); }
   if(id==='sales'){ populateSalesRecipeSelect(); calcSalesCosting(); }
@@ -1527,11 +1638,19 @@ function estimateIBU(hops, og, batchL, boilTime){
   return hops.reduce((total,h)=>{
     const aa = parseFloat(h.aa)||0;
     const grams = parseFloat(h.amount)||0;
-    const time = h.use==='dry hop' ? 0 : (parseFloat(h.time)||0);
+    if(h.use==='dry hop') return total; // negligible bittering contribution
+    const time = parseFloat(h.time)||0;
     if(time<=0 || aa<=0 || grams<=0) return total;
     const bigness = 1.65 * Math.pow(0.000125, og-1);
     const boilFactor = (1 - Math.exp(-0.04 * time)) / 4.15;
-    const util = bigness * boilFactor;
+    // Whirlpool/hopstand additions steep well below true boiling temperature
+    // (commonly ~75-85°C rather than ~100°C), which sharply reduces alpha
+    // acid isomerization. Full-boil Tinseth utilization badly overstates
+    // their IBU contribution — derated to ~30% here, a commonly used
+    // approximation for whirlpool at typical temperatures. Real contribution
+    // varies with your actual whirlpool temp and duration.
+    const whirlpoolDerate = h.use==='whirlpool' ? 0.30 : 1;
+    const util = bigness * boilFactor * whirlpoolDerate;
     const mgL = (aa/100) * grams * 1000 / (batchL||1);
     return total + mgL*util;
   }, 0);
@@ -1920,6 +2039,11 @@ function recalc(){
 
 async function generateBeerDescription(){
   const btn = document.getElementById('gen-desc-btn');
+  const apiKey = getAnthropicKey();
+  if(!apiKey){
+    showToast('Add your Anthropic API key first — Equipment & data → AI Description');
+    return;
+  }
   const name = document.getElementById('r-name').value || 'Untitled recipe';
   const style = document.getElementById('r-style').value || 'unspecified style';
   const fermList = (window._editingFerms||[]).map(f=>`${f.amount}kg ${f.name}`).join(', ') || 'no fermentables listed';
@@ -1949,13 +2073,23 @@ Write only the description text itself — no preamble, no quotation marks, no m
   try{
     const response = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true",
+      },
       body: JSON.stringify({
         model: "claude-sonnet-4-6",
         max_tokens: 300,
         messages: [{role:"user", content: prompt}],
       })
     });
+    if(!response.ok){
+      const errBody = await response.json().catch(()=>({}));
+      const msg = errBody.error && errBody.error.message ? errBody.error.message : `HTTP ${response.status}`;
+      throw new Error(msg);
+    }
     const data = await response.json();
     const text = (data.content||[]).map(b=>b.text||'').join('').trim();
     if(text){
@@ -1965,7 +2099,7 @@ Write only the description text itself — no preamble, no quotation marks, no m
       showToast('Could not generate a description — try again');
     }
   }catch(e){
-    showToast('Could not reach the description generator — check your connection');
+    showToast('Generation failed: ' + (e.message || 'check your API key and connection'));
   }
   btn.disabled = false;
   btn.textContent = '✨ Generate from ingredients';
@@ -2147,6 +2281,49 @@ function waterPpmStatsHtml(ppm){
     <div class="stat"><div class="stat-label">HCO₃⁻</div><div class="stat-value">${ppm.hco3.toFixed(0)}<span class="unit">ppm</span></div></div>
   `;
 }
+// Rule-of-thumb dosing rates — real buffering capacity varies with grain
+// bill composition and water alkalinity, so these are starting points only.
+// Lactic acid rate is based on published figures converging around
+// 0.2-0.3 mL/kg/0.1pH (including a figure traceable to Kolbach's original
+// brewing-science research: ~0.29g/kg/0.1pH, ≈0.24mL/kg at 88% lactic's
+// density) — corrected from an earlier, roughly 4x-too-high estimate here.
+const PH_AGENTS = {
+  lactic:    {label:'Lactic acid (88%)',          unit:'mL', perKgPer0_1pH: 0.25, direction:'lower'},
+  phosphoric:{label:'Phosphoric acid (10%)',       unit:'mL', perKgPer0_1pH: 0.75, direction:'lower'},
+  'soda-ash':{label:'Sodium carbonate (soda ash)', unit:'g',  perKgPer0_1pH: 0.15, direction:'raise'},
+};
+function calcPhAdjust(){
+  const grainKg = parseFloat(document.getElementById('ph-grain').value)||0;
+  const current = parseFloat(document.getElementById('ph-current').value)||0;
+  const target = parseFloat(document.getElementById('ph-target').value)||0;
+  const agentKey = document.getElementById('ph-agent').value;
+  const agent = PH_AGENTS[agentKey];
+  const warnEl = document.getElementById('ph-direction-warning');
+
+  const delta = agent.direction==='lower' ? (current-target) : (target-current);
+  document.getElementById('ph-delta-out').textContent = (delta>=0?'':'−') + Math.abs(delta).toFixed(2) + ' pH';
+
+  if(delta<=0){
+    document.getElementById('ph-dose-out').textContent = '0 ' + agent.unit;
+    warnEl.textContent = agent.direction==='lower'
+      ? "Current pH is already at or below target — this acid isn't needed here (you'd want a base like soda ash instead if pH needs raising)."
+      : "Current pH is already at or above target — soda ash isn't needed here (you'd want an acid instead if pH needs lowering).";
+    return;
+  }
+  const dose = grainKg * agent.perKgPer0_1pH * (delta/0.1);
+  document.getElementById('ph-dose-out').textContent = dose.toFixed(1) + ' ' + agent.unit;
+  warnEl.textContent = 'Add roughly half this amount, stir well, wait a few minutes, then re-measure before adding more — buffering varies enough that a single blind dose can overshoot.';
+}
+// Back-solves a single salt's grams from a desired ppm of its "headline" ion,
+// treating that salt in isolation (doesn't account for other salts also
+// feeding the same ion — the result row below shows the true combined total).
+function setSaltFromPpm(gramsFieldId, ppmFieldId, yieldConst){
+  const L = parseFloat(document.getElementById('w-vol').value)||1;
+  const ppm = parseFloat(document.getElementById(ppmFieldId).value)||0;
+  const grams = ppm * L / yieldConst;
+  document.getElementById(gramsFieldId).value = grams.toFixed(2);
+  calcWater();
+}
 function calcWater(){
   const L = parseFloat(document.getElementById('w-vol').value)||1;
   const salts = {
@@ -2224,11 +2401,36 @@ const WATER_PRESETS = {
 };
 function populatePresetSelect(){
   const sel = document.getElementById('w-preset');
-  const sel2 = document.getElementById('t-preset');
+  if(!sel) return;
   Object.keys(WATER_PRESETS).forEach(name=>{
-    if(sel){ const opt = document.createElement('option'); opt.value = name; opt.textContent = name; sel.appendChild(opt); }
-    if(sel2){ const opt2 = document.createElement('option'); opt2.value = name; opt2.textContent = name; sel2.appendChild(opt2); }
+    const opt = document.createElement('option'); opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
   });
+}
+function getWaterProfileByKey(key){
+  if(!key) return {ca:0, so4:0, cl:0, na:0, mg:0, hco3:0}; // RO / distilled
+  if(key.startsWith('custom:')){
+    const id = key.slice(7);
+    const p = (state.customWaterProfiles||[]).find(x=>x.id===id);
+    return p ? {ca:p.ca||0, so4:p.so4||0, cl:p.cl||0, na:p.na||0, mg:p.mg||0, hco3:p.hco3||0} : {ca:0,so4:0,cl:0,na:0,mg:0,hco3:0};
+  }
+  return WATER_PRESETS[key] || {ca:0,so4:0,cl:0,na:0,mg:0,hco3:0};
+}
+function populateAllWaterProfileSelects(){
+  const sourceSel = document.getElementById('t-source');
+  const targetSel = document.getElementById('t-preset');
+  if(!sourceSel && !targetSel) return;
+  const buildOptions = (currentVal) => {
+    let html = sourceSel ? '<option value="">RO / Distilled (0 ppm all round)</option>' : '<option value="">— Select a profile —</option>';
+    html += '<optgroup label="Classic profiles">' + Object.keys(WATER_PRESETS).map(name=>`<option value="${name}">${name}</option>`).join('') + '</optgroup>';
+    const customs = state.customWaterProfiles||[];
+    if(customs.length){
+      html += '<optgroup label="Your saved profiles">' + customs.map(p=>`<option value="custom:${p.id}">${escapeHtml(p.name)}</option>`).join('') + '</optgroup>';
+    }
+    return html;
+  };
+  if(sourceSel){ const cur = sourceSel.value; sourceSel.innerHTML = buildOptions(true); sourceSel.value = cur; }
+  if(targetSel){ const cur = targetSel.value; targetSel.innerHTML = buildOptions(false); targetSel.value = cur; }
 }
 function applyPreset(){
   const name = document.getElementById('w-preset').value;
@@ -2245,39 +2447,45 @@ function applyPreset(){
   `;
 }
 function calcTargetWater(){
-  const name = document.getElementById('t-preset').value;
+  const sourceKey = document.getElementById('t-source') ? document.getElementById('t-source').value : '';
+  const targetKey = document.getElementById('t-preset').value;
   const out = document.getElementById('target-water-out');
   const L = parseFloat(document.getElementById('t-vol').value)||19;
-  if(!name){ out.innerHTML = ''; return; }
-  const t = WATER_PRESETS[name];
+  if(!targetKey){ out.innerHTML = ''; return; }
+  const t = getWaterProfileByKey(targetKey);
+  const src = getWaterProfileByKey(sourceKey);
+  // We can only ADD minerals, never remove them — so what the salts need to
+  // cover is the shortfall above the source water, per ion, floored at 0.
+  const need = {
+    ca: Math.max(0, t.ca - src.ca), so4: Math.max(0, t.so4 - src.so4),
+    cl: Math.max(0, t.cl - src.cl), na: Math.max(0, t.na - src.na),
+    mg: Math.max(0, t.mg - src.mg), hco3: Math.max(0, t.hco3 - src.hco3),
+  };
   // Solved in dependency order so each salt's OTHER ion is accounted for
   // before the next salt is solved. Chalk (CaCO3) is used where it helps —
   // it pairs Ca with alkalinity instead of Cl, so profiles wanting both high
   // Ca and high HCO3 (Dortmund, Burton, Dublin, London...) lean on it before
   // falling back to CaCl2, which meaningfully cuts the Cl overshoot on those.
-  let epsom  = Math.max(0, t.mg * L / 98.6);                 // Mg  <- Epsom only
-  let gypsum = Math.max(0, (t.so4*L - 389*epsom) / 557.7);   // SO4 <- Gypsum + Epsom
+  let epsom  = Math.max(0, need.mg * L / 98.6);                 // Mg  <- Epsom only
+  let gypsum = Math.max(0, (need.so4*L - 389*epsom) / 557.7);   // SO4 <- Gypsum + Epsom
   let caFromGypsum = 232.5*gypsum/L;
-  let caRemaining = Math.max(0, t.ca - caFromGypsum);
-  // use chalk for whichever of (remaining Ca) or (HCO3 target) is smaller,
+  let caRemaining = Math.max(0, need.ca - caFromGypsum);
+  // use chalk for whichever of (remaining Ca) or (HCO3 shortfall) is smaller,
   // so it never overshoots either on its own
-  let chalk = Math.min(caRemaining*L/400.4, t.hco3*L/1219.4);
+  let chalk = Math.min(caRemaining*L/400.4, need.hco3*L/1219.4);
   chalk = Math.max(0, chalk);
-  let caFromChalk = 400.4*chalk/L;
-  let hco3FromChalk = 1219.4*chalk/L;
-  let cacl2  = Math.max(0, (t.ca*L - 232.5*gypsum - 400.4*chalk) / 272); // Ca  <- Gypsum + Chalk + CaCl2
-  let nacl   = Math.max(0, (t.cl*L - 482*cacl2) / 607);                 // Cl  <- CaCl2 + NaCl
-  let soda   = Math.max(0, (t.hco3*L - 1219.4*chalk) / 726);            // HCO3 <- Chalk + Baking soda
+  let cacl2  = Math.max(0, (need.ca*L - 232.5*gypsum - 400.4*chalk) / 272); // Ca  <- Gypsum + Chalk + CaCl2
+  let nacl   = Math.max(0, (need.cl*L - 482*cacl2) / 607);                 // Cl  <- CaCl2 + NaCl
+  let soda   = Math.max(0, (need.hco3*L - 1219.4*chalk) / 726);            // HCO3 <- Chalk + Baking soda
 
-  // What these salts actually produce (same math as the calculator above) —
-  // shown directly so any gap from the target is visible immediately rather
-  // than only discovered by cross-checking manually.
-  const resCa   = (232.5*gypsum + 272*cacl2 + 400.4*chalk) / L;
-  const resSo4  = (557.7*gypsum + 389*epsom) / L;
-  const resCl   = (482*cacl2 + 607*nacl) / L;
-  const resNa   = (393*nacl + 274*soda) / L;
-  const resMg   = (98.6*epsom) / L;
-  const resHco3 = (726*soda + 1219.4*chalk) / L;
+  // What the FINAL water actually looks like: source water plus what these
+  // salts add — compared against the original target, not the shortfall.
+  const resCa   = src.ca  + (232.5*gypsum + 272*cacl2 + 400.4*chalk) / L;
+  const resSo4  = src.so4 + (557.7*gypsum + 389*epsom) / L;
+  const resCl   = src.cl  + (482*cacl2 + 607*nacl) / L;
+  const resNa   = src.na  + (393*nacl + 274*soda) / L;
+  const resMg   = src.mg  + (98.6*epsom) / L;
+  const resHco3 = src.hco3 + (726*soda + 1219.4*chalk) / L;
 
   const rows = [
     ['Ca²⁺', resCa, t.ca], ['SO₄²⁻', resSo4, t.so4], ['Cl⁻', resCl, t.cl],
@@ -2507,6 +2715,60 @@ function removeMaintenance(eqId, idx){
   persist();
   renderEquipmentList();
 }
+
+/* ---------------------------------------------------------------------
+   CUSTOM WATER PROFILES — user's own source water (e.g. town mains),
+   used as the starting point in the Target water calculator instead of
+   always assuming RO/distilled.
+--------------------------------------------------------------------- */
+function addCustomWaterProfile(){
+  state.customWaterProfiles = state.customWaterProfiles || [];
+  state.customWaterProfiles.push({id:uid(), name:'My tap water', ca:0, so4:0, cl:0, na:0, mg:0, hco3:0});
+  persist();
+  renderCustomWaterList();
+  populateAllWaterProfileSelects();
+}
+function removeCustomWaterProfile(id){
+  if(!confirm('Delete this water profile?')) return;
+  state.customWaterProfiles = (state.customWaterProfiles||[]).filter(p=>p.id!==id);
+  persist();
+  renderCustomWaterList();
+  populateAllWaterProfileSelects();
+}
+function updateCustomWaterProfile(id, field, val){
+  const p = (state.customWaterProfiles||[]).find(x=>x.id===id);
+  if(!p) return;
+  p[field] = field==='name' ? val : (parseFloat(val)||0);
+  persist();
+  if(field==='name') populateAllWaterProfileSelects();
+  calcTargetWater();
+}
+function renderCustomWaterList(){
+  const el = document.getElementById('custom-water-list');
+  if(!el) return;
+  const profiles = state.customWaterProfiles || [];
+  if(profiles.length===0){
+    el.innerHTML = `<div class="empty-state"><div class="glyph-lg">💧</div>No custom water profiles yet. Add your source water to get accurate treatment suggestions.</div>`;
+    return;
+  }
+  el.innerHTML = profiles.map(p=>`
+    <div class="panel" style="background:var(--surface-raised);margin-bottom:14px;">
+      <div class="field" style="max-width:320px;margin-bottom:12px;"><label>Profile name</label><input value="${escapeAttr(p.name)}" onchange="updateCustomWaterProfile('${p.id}','name',this.value)"></div>
+      <div class="grid cols-3" style="margin-bottom:12px;">
+        <div class="field"><label>Ca²⁺ (ppm)</label><input type="number" step="1" value="${p.ca}" onchange="updateCustomWaterProfile('${p.id}','ca',this.value)"></div>
+        <div class="field"><label>SO₄²⁻ (ppm)</label><input type="number" step="1" value="${p.so4}" onchange="updateCustomWaterProfile('${p.id}','so4',this.value)"></div>
+        <div class="field"><label>Cl⁻ (ppm)</label><input type="number" step="1" value="${p.cl}" onchange="updateCustomWaterProfile('${p.id}','cl',this.value)"></div>
+      </div>
+      <div class="grid cols-3" style="margin-bottom:12px;">
+        <div class="field"><label>Na⁺ (ppm)</label><input type="number" step="1" value="${p.na}" onchange="updateCustomWaterProfile('${p.id}','na',this.value)"></div>
+        <div class="field"><label>Mg²⁺ (ppm)</label><input type="number" step="1" value="${p.mg}" onchange="updateCustomWaterProfile('${p.id}','mg',this.value)"></div>
+        <div class="field"><label>HCO₃⁻ (ppm)</label><input type="number" step="1" value="${p.hco3}" onchange="updateCustomWaterProfile('${p.id}','hco3',this.value)"></div>
+      </div>
+      <button class="btn danger small" onclick="removeCustomWaterProfile('${p.id}')">Delete profile</button>
+    </div>
+  `).join('');
+}
+
 function renderEquipmentList(){
   const el = document.getElementById('equipment-list');
   if(!el) return;
@@ -2595,9 +2857,9 @@ function importData(evt){
     try{
       const loaded = JSON.parse(e.target.result);
       if(!confirm('Import will replace all current data with the backup file. Continue?')) return;
-      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [] }, loaded);
+      state = Object.assign({ recipes: [], batches: [], inventory: { fermentables: [], hops: [], yeast: [] }, equipment: [], batchCounter: 0, vessels: [], customWaterProfiles: [] }, loaded);
       persist(true);
-      renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect();
+      renderRecipeGrid(); renderBatchGrid(); renderInventory(); renderEquipmentList(); populateEquipmentSelect(); populateAllWaterProfileSelects();
       showToast('Data imported');
     }catch(err){ showToast('Import failed — invalid file'); }
   };
@@ -2839,8 +3101,50 @@ function openBatchDetail(id){
   document.getElementById('b-tasting').value = b.tasting||'';
   renderGravityRows();
   renderPackagingRows();
+  renderBatchLogRows();
   document.getElementById('batch-detail').style.display = 'block';
   document.getElementById('batch-detail').scrollIntoView({behavior:'smooth', block:'start'});
+}
+function addBatchLogEntry(){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  if(!b) return;
+  const input = document.getElementById('batch-log-input');
+  const text = input.value.trim();
+  if(!text){ showToast('Write something first'); return; }
+  b.log = b.log || [];
+  b.log.push({id: uid(), timestamp: new Date().toISOString(), author: brewerName || 'Unknown', text});
+  persist(true);
+  input.value = '';
+  renderBatchLogRows();
+  showToast('Note logged');
+}
+function removeBatchLogEntry(entryId){
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  if(!b) return;
+  b.log = (b.log||[]).filter(e=>e.id!==entryId);
+  persist(true);
+  renderBatchLogRows();
+}
+function renderBatchLogRows(){
+  const el = document.getElementById('batch-log-rows');
+  if(!el) return;
+  const b = state.batches.find(x=>x.id===currentBatchId);
+  const entries = (b && b.log) ? b.log.slice().reverse() : [];
+  if(entries.length===0){
+    el.innerHTML = `<p class="page-sub" style="margin:0;">No log entries yet.</p>`;
+    return;
+  }
+  el.innerHTML = entries.map(e=>{
+    const when = new Date(e.timestamp);
+    const whenStr = isNaN(when) ? e.timestamp : when.toLocaleString(undefined, {dateStyle:'medium', timeStyle:'short'});
+    return `<div style="border-bottom:1px solid var(--line);padding:10px 0;">
+      <div class="db-hint" style="margin-bottom:4px;">${whenStr} — ${escapeHtml(e.author||'Unknown')}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+        <div style="white-space:pre-wrap;">${escapeHtml(e.text)}</div>
+        <button class="icon-btn" onclick="removeBatchLogEntry('${e.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 function closeBatchDetail(){
   document.getElementById('batch-detail').style.display = 'none';
@@ -3257,8 +3561,9 @@ document.getElementById('sidebar-logo').src = LOGO_DATA_URL;
 renderNav();
 showView('dashboard');
 populatePresetSelect();
+populateAllWaterProfileSelects();
 buildDatalists();
-calcABV(); calcHopAA(); calcStrike(); calcWater(); calcPriming(); calcForcedCarb(); calcHydroCorrection(); calcYeastStarter(); calcSalesCosting();
+calcABV(); calcHopAA(); calcStrike(); calcWater(); calcPhAdjust(); calcPriming(); calcForcedCarb(); calcHydroCorrection(); calcYeastStarter(); calcSalesCosting();
 
 (async function boot(){
   await detectStorageBackend();
