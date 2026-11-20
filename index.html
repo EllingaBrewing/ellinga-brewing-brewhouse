@@ -487,6 +487,33 @@
       </div>
 
       <div class="panel">
+        <h2 class="panel-title">Gravity correction</h2>
+        <p class="page-sub" style="margin-bottom:14px;">Missed your target gravity on brew day? Work out what it takes to fix it — dilute with water if it's too high, boil down to concentrate, or add extract/sugar, if it's too low.</p>
+        <div class="grid cols-4" style="margin-bottom:16px;">
+          <div class="field"><label>Current volume (L)</label><input id="gc-vol" type="number" step="0.1" value="19" oninput="calcGravityCorrection()"></div>
+          <div class="field"><label>Current gravity</label><input id="gc-current" type="number" step="0.001" value="1.058" oninput="calcGravityCorrection()"></div>
+          <div class="field"><label>Target gravity</label><input id="gc-target" type="number" step="0.001" value="1.050" oninput="calcGravityCorrection()"></div>
+          <div class="field"><label>Method</label>
+            <select id="gc-method" onchange="toggleGravityMethod();calcGravityCorrection()">
+              <option value="dilute">Add water (gravity too high)</option>
+              <option value="boil">Boil down (gravity too low)</option>
+              <option value="extract">Add extract/sugar (gravity too low)</option>
+            </select>
+          </div>
+        </div>
+        <div class="grid cols-3" id="gc-extract-row" style="display:none;margin-bottom:16px;">
+          <div class="field">
+            <label>Sugar/extract to add</label>
+            <input id="gc-extract-name" list="fermentable-list" placeholder="e.g. Light DME" oninput="handleGcExtractInput(this.value)">
+            <div class="db-hint" id="gc-extract-hint"></div>
+          </div>
+          <div class="field"><label>Potential (pts/kg/L)</label><input id="gc-extract-potential" type="number" step="1" value="367" oninput="calcGravityCorrection()"></div>
+        </div>
+        <div class="stat-row" style="margin-bottom:0;" id="gc-out"></div>
+        <p class="db-hint" id="gc-warning" style="margin-top:10px;"></p>
+      </div>
+
+      <div class="panel">
         <h2 class="panel-title">Yeast starter</h2>
         <p class="page-sub" style="margin-bottom:14px;">Simplified estimate of cells needed vs. what a pack provides — not a full growth model, but a solid gut-check.</p>
         <div class="grid cols-4" style="margin-bottom:16px;">
@@ -1260,38 +1287,38 @@ async function loadBrewerName(){
    auto-fills recipe rows, fully editable after)
 --------------------------------------------------------------------- */
 const FERMENTABLE_DB = [
-  {name:'2-Row Pale Malt', potential:309, ebc:3.8, origin:'Rahr Malting (USA) / Barrett Burston (Australia)', desc:'Clean, neutral base malt — the workhorse for most pale styles'},
-  {name:'6-Row Pale Malt - Rahr Malting (USA)', potential:292, ebc:3.8, origin:'Rahr Malting (USA)', desc:'Higher enzyme base malt, slightly grainy/husky, good for adjunct-heavy brews'},
-  {name:'Maris Otter', potential:317, ebc:6.5, origin:'Crisp Malting / Simpsons Malt (England)', desc:'Rich, biscuity, malty backbone — the classic English pale ale base'},
-  {name:'Golden Promise', potential:309, ebc:6.5, origin:'Simpsons Malt / Crisp Malting (Scotland)', desc:'Soft, slightly sweet malt character, popular in Scotch ales and whisky'},
-  {name:'Pilsner Malt', potential:309, ebc:2.5, origin:'Weyermann (Germany) / Bohemia Malt (Czechia)', desc:'Delicate, honey-like sweetness — base for crisp lagers and pilsners'},
-  {name:'Vienna Malt - Weyermann (GER)', potential:292, ebc:9.2, origin:'Weyermann (Germany)', desc:'Toasty, light amber, adds malt depth to lagers and amber ales'},
+  {name:'2-Row Pale Malt', potential:309, ebc:3.9, origin:'Rahr Malting (USA) / Barrett Burston (Australia)', desc:'Clean, neutral base malt — the workhorse for most pale styles'},
+  {name:'6-Row Pale Malt - Rahr Malting (USA)', potential:292, ebc:3.9, origin:'Rahr Malting (USA)', desc:'Higher enzyme base malt, slightly grainy/husky, good for adjunct-heavy brews'},
+  {name:'Maris Otter', potential:317, ebc:5.9, origin:'Crisp Malting / Simpsons Malt (England)', desc:'Rich, biscuity, malty backbone — the classic English pale ale base'},
+  {name:'Golden Promise', potential:309, ebc:5.9, origin:'Simpsons Malt / Crisp Malting (Scotland)', desc:'Soft, slightly sweet malt character, popular in Scotch ales and whisky'},
+  {name:'Pilsner Malt', potential:309, ebc:3.0, origin:'Weyermann (Germany) / Bohemia Malt (Czechia)', desc:'Delicate, honey-like sweetness — base for crisp lagers and pilsners'},
+  {name:'Vienna Malt - Weyermann (GER)', potential:292, ebc:7.9, origin:'Weyermann (Germany)', desc:'Toasty, light amber, adds malt depth to lagers and amber ales'},
   {name:'Munich Malt I - Weyermann (GER)', potential:292, ebc:17, origin:'Weyermann (Germany)', desc:'Rich malty, bready sweetness — core of Munich helles and dunkel'},
   {name:'Munich Malt II - Weyermann (GER)', potential:284, ebc:28, origin:'Weyermann (Germany)', desc:'Deeper toasted-bread character, adds color and malt intensity'},
-  {name:'Wheat Malt', potential:317, ebc:3.8, origin:'Weyermann (Germany) / Dingemans (Belgium)', desc:'Adds protein and a soft, bready, slightly tart wheat character'},
-  {name:'Rye Malt - Weyermann (GER)', potential:300, ebc:6.5, origin:'Weyermann (Germany)', desc:'Spicy, slightly sour, distinctive rye bread character'},
-  {name:'Rauchmalt (Smoked) - Weyermann (GER)', potential:292, ebc:6.5, origin:'Weyermann (Germany)', desc:'Campfire/smoky bacon character — signature of German rauchbier'},
-  {name:'Biscuit Malt', potential:292, ebc:65.2, origin:'Castle Malting / Dingemans (Belgium)', desc:'Toasted biscuit/cracker flavor, common in Belgian ales'},
-  {name:'Victory Malt - Briess (USA)', potential:284, ebc:73.2, origin:'Briess (USA)', desc:'Nutty, toasty biscuit character, American answer to biscuit malt'},
-  {name:'Melanoidin Malt - Weyermann (GER)', potential:284, ebc:70.5, origin:'Weyermann (Germany)', desc:'Deep malty richness, boosts body and red-amber color'},
-  {name:'Aromatic Malt', potential:275, ebc:67.9, origin:'Dingemans / Castle Malting (Belgium)', desc:'Intense malt aroma and flavor, used in small amounts for depth'},
-  {name:'Special Roast - Briess (USA)', potential:275, ebc:132.0, origin:'Briess (USA)', desc:'Toasty, slightly tart, reddish-brown character malt'},
-  {name:'Crystal 10L', potential:292, ebc:25.2, origin:'Crisp/Simpsons (England) — Briess Caramel 10L (USA)', desc:'Light caramel sweetness, subtle color, adds body'},
-  {name:'Crystal 20L', potential:292, ebc:51.9, origin:'Crisp/Simpsons (England) — Briess Caramel 20L (USA)', desc:'Light-medium caramel sweetness and golden-amber color'},
-  {name:'Crystal 40L', potential:284, ebc:105.3, origin:'Crisp/Simpsons (England) — Briess Caramel 40L (USA)', desc:'Classic caramel sweetness, amber color — pale ale staple'},
-  {name:'Crystal 60L', potential:284, ebc:158.6, origin:'Crisp/Simpsons (England) — Briess Caramel 60L (USA)', desc:'Rich caramel/toffee flavor, deeper amber-copper color'},
-  {name:'Crystal 80L', potential:275, ebc:212.0, origin:'Crisp/Simpsons (England) — Briess Caramel 80L (USA)', desc:'Dark caramel, raisin-like sweetness, copper-brown color'},
-  {name:'Crystal 90L', potential:275, ebc:238.7, origin:'Crisp/Simpsons (England) — Briess Caramel 90L (USA)', desc:'Deep caramel, dried fruit notes, brown color'},
-  {name:'Crystal 120L', potential:275, ebc:318.8, origin:'Crisp/Simpsons (England) — Briess Caramel 120L (USA)', desc:'Dark toffee, burnt sugar, deep brown color'},
-  {name:'Crystal 150L - Crisp Malting (ENG)', potential:267, ebc:398.9, origin:'Crisp Malting (England)', desc:'Intense dark caramel/raisin, near-black brown color'},
-  {name:'CaraPils / Dextrine', potential:275, ebc:2.5, origin:'Briess (USA) — Weyermann equiv. is "Carafoam"', desc:'Adds body and head retention with no sweetness or color'},
-  {name:'CaraHell - Weyermann (GER)', potential:292, ebc:25.2, origin:'Weyermann (Germany)', desc:'Light caramel sweetness for German-style lagers'},
-  {name:'CaraRed - Weyermann (GER)', potential:284, ebc:51.9, origin:'Weyermann (Germany)', desc:'Reddish color and mild caramel sweetness'},
-  {name:'CaraMunich I - Weyermann (GER)', potential:284, ebc:118.6, origin:'Weyermann (Germany)', desc:'Malty caramel sweetness, amber-copper color'},
-  {name:'CaraMunich II - Weyermann (GER)', potential:284, ebc:158.6, origin:'Weyermann (Germany)', desc:'Richer caramel malt flavor, deeper copper color'},
-  {name:'CaraMunich III - Weyermann (GER)', potential:284, ebc:212.0, origin:'Weyermann (Germany)', desc:'Intense caramel and dark fruit notes, dark copper color'},
-  {name:'CaraAroma - Weyermann (GER)', potential:275, ebc:345.5, origin:'Weyermann (Germany)', desc:'Deep dried-fruit caramel richness, dark brown color'},
-  {name:'Honey Malt - Gambrinus Malting (CAN)', potential:284, ebc:65.2, origin:'Gambrinus Malting (Canada)', desc:'Sweet, honey-like malt flavor with light toast'},
+  {name:'Wheat Malt', potential:317, ebc:3.9, origin:'Weyermann (Germany) / Dingemans (Belgium)', desc:'Adds protein and a soft, bready, slightly tart wheat character'},
+  {name:'Rye Malt - Weyermann (GER)', potential:300, ebc:5.9, origin:'Weyermann (Germany)', desc:'Spicy, slightly sour, distinctive rye bread character'},
+  {name:'Rauchmalt (Smoked) - Weyermann (GER)', potential:292, ebc:5.9, origin:'Weyermann (Germany)', desc:'Campfire/smoky bacon character — signature of German rauchbier'},
+  {name:'Biscuit Malt', potential:292, ebc:49.2, origin:'Castle Malting / Dingemans (Belgium)', desc:'Toasted biscuit/cracker flavor, common in Belgian ales'},
+  {name:'Victory Malt - Briess (USA)', potential:284, ebc:55.1, origin:'Briess (USA)', desc:'Nutty, toasty biscuit character, American answer to biscuit malt'},
+  {name:'Melanoidin Malt - Weyermann (GER)', potential:284, ebc:53.1, origin:'Weyermann (Germany)', desc:'Deep malty richness, boosts body and red-amber color'},
+  {name:'Aromatic Malt', potential:275, ebc:51.2, origin:'Dingemans / Castle Malting (Belgium)', desc:'Intense malt aroma and flavor, used in small amounts for depth'},
+  {name:'Special Roast - Briess (USA)', potential:275, ebc:98.5, origin:'Briess (USA)', desc:'Toasty, slightly tart, reddish-brown character malt'},
+  {name:'Crystal 10L', potential:292, ebc:19.7, origin:'Crisp/Simpsons (England) — Briess Caramel 10L (USA)', desc:'Light caramel sweetness, subtle color, adds body'},
+  {name:'Crystal 20L', potential:292, ebc:39.4, origin:'Crisp/Simpsons (England) — Briess Caramel 20L (USA)', desc:'Light-medium caramel sweetness and golden-amber color'},
+  {name:'Crystal 40L', potential:284, ebc:78.8, origin:'Crisp/Simpsons (England) — Briess Caramel 40L (USA)', desc:'Classic caramel sweetness, amber color — pale ale staple'},
+  {name:'Crystal 60L', potential:284, ebc:118.2, origin:'Crisp/Simpsons (England) — Briess Caramel 60L (USA)', desc:'Rich caramel/toffee flavor, deeper amber-copper color'},
+  {name:'Crystal 80L', potential:275, ebc:157.6, origin:'Crisp/Simpsons (England) — Briess Caramel 80L (USA)', desc:'Dark caramel, raisin-like sweetness, copper-brown color'},
+  {name:'Crystal 90L', potential:275, ebc:177.3, origin:'Crisp/Simpsons (England) — Briess Caramel 90L (USA)', desc:'Deep caramel, dried fruit notes, brown color'},
+  {name:'Crystal 120L', potential:275, ebc:236.4, origin:'Crisp/Simpsons (England) — Briess Caramel 120L (USA)', desc:'Dark toffee, burnt sugar, deep brown color'},
+  {name:'Crystal 150L - Crisp Malting (ENG)', potential:267, ebc:295.5, origin:'Crisp Malting (England)', desc:'Intense dark caramel/raisin, near-black brown color'},
+  {name:'CaraPils / Dextrine', potential:275, ebc:3.0, origin:'Briess (USA) — Weyermann equiv. is "Carafoam"', desc:'Adds body and head retention with no sweetness or color'},
+  {name:'CaraHell - Weyermann (GER)', potential:292, ebc:19.7, origin:'Weyermann (Germany)', desc:'Light caramel sweetness for German-style lagers'},
+  {name:'CaraRed - Weyermann (GER)', potential:284, ebc:39.4, origin:'Weyermann (Germany)', desc:'Reddish color and mild caramel sweetness'},
+  {name:'CaraMunich I - Weyermann (GER)', potential:284, ebc:88.6, origin:'Weyermann (Germany)', desc:'Malty caramel sweetness, amber-copper color'},
+  {name:'CaraMunich II - Weyermann (GER)', potential:284, ebc:118.2, origin:'Weyermann (Germany)', desc:'Richer caramel malt flavor, deeper copper color'},
+  {name:'CaraMunich III - Weyermann (GER)', potential:284, ebc:157.6, origin:'Weyermann (Germany)', desc:'Intense caramel and dark fruit notes, dark copper color'},
+  {name:'CaraAroma - Weyermann (GER)', potential:275, ebc:256.1, origin:'Weyermann (Germany)', desc:'Deep dried-fruit caramel richness, dark brown color'},
+  {name:'Honey Malt - Gambrinus Malting (CAN)', potential:284, ebc:49.2, origin:'Gambrinus Malting (Canada)', desc:'Sweet, honey-like malt flavor with light toast'},
   {name:'Chocolate Malt - Crisp Malting (ENG)', potential:234, ebc:932.7, origin:'Crisp Malting (England)', desc:'Roasted, chocolatey, coffee-like bitterness and dark brown color'},
   {name:'Pale Chocolate Malt - Crisp Malting (ENG)', potential:250, ebc:599.0, origin:'Crisp Malting (England)', desc:'Milder roasted chocolate flavor, less harsh bitterness'},
   {name:'Black Patent Malt - Crisp Malting (ENG)', potential:209, ebc:1333.0, origin:'Crisp Malting (England)', desc:'Sharp roasted, almost burnt/acrid character — used sparingly'},
@@ -1300,85 +1327,272 @@ const FERMENTABLE_DB = [
   {name:'Carafa II - Weyermann (GER)', potential:267, ebc:1106.1, origin:'Weyermann (Germany)', desc:'Deep roasted color and flavor, dehusked for smoothness'},
   {name:'Carafa III - Weyermann (GER)', potential:267, ebc:1333.0, origin:'Weyermann (Germany)', desc:'Very dark, smooth roast character, minimal astringency'},
   {name:'Debittered Black Malt', potential:217, ebc:1333.0, origin:'Weyermann (Germany) — "Carafa Special"', desc:'Deep black color with reduced roasted bitterness'},
-  {name:'Flaked Oats - Simpsons Malt (ENG)', potential:275, ebc:1.1, origin:'Simpsons Malt (England)', desc:'Silky mouthfeel and haze — key to oatmeal stouts and hazy IPAs'},
-  {name:'Flaked Wheat - Simpsons Malt (ENG)', potential:284, ebc:3.8, origin:'Simpsons Malt (England)', desc:'Improves head retention and adds soft body'},
-  {name:'Flaked Barley - Simpsons Malt (ENG)', potential:267, ebc:3.8, origin:'Simpsons Malt (England)', desc:'Adds body and creamy head, common in stouts'},
-  {name:'Flaked Rye - Simpsons Malt (ENG)', potential:267, ebc:6.5, origin:'Simpsons Malt (England)', desc:'Spicy rye character with a smoother profile than rye malt'},
+  {name:'Flaked Oats - Simpsons Malt (ENG)', potential:275, ebc:1.9, origin:'Simpsons Malt (England)', desc:'Silky mouthfeel and haze — key to oatmeal stouts and hazy IPAs'},
+  {name:'Flaked Wheat - Simpsons Malt (ENG)', potential:284, ebc:3.9, origin:'Simpsons Malt (England)', desc:'Improves head retention and adds soft body'},
+  {name:'Flaked Barley - Simpsons Malt (ENG)', potential:267, ebc:3.9, origin:'Simpsons Malt (England)', desc:'Adds body and creamy head, common in stouts'},
+  {name:'Flaked Rye - Simpsons Malt (ENG)', potential:267, ebc:5.9, origin:'Simpsons Malt (England)', desc:'Spicy rye character with a smoother profile than rye malt'},
   {name:'Flaked Corn (Maize) - Simpsons Malt (ENG)', potential:325, ebc:0, origin:'Simpsons Malt (England)', desc:'Lightens body and flavor, classic American lager adjunct'},
   {name:'Flaked Rice - Simpsons Malt (ENG)', potential:317, ebc:0, origin:'Simpsons Malt (England)', desc:'Very neutral, lightens body — used in crisp lagers'},
-  {name:'Torrified Wheat - Simpsons Malt (ENG)', potential:284, ebc:3.8, origin:'Simpsons Malt (England)', desc:'Improves head retention, neutral flavor'},
+  {name:'Torrified Wheat - Simpsons Malt (ENG)', potential:284, ebc:3.9, origin:'Simpsons Malt (England)', desc:'Improves head retention, neutral flavor'},
   {name:'Rice Hulls', potential:0, ebc:0, origin:'USA/Asia', desc:'No flavor or extract — purely a lauter aid for sticky mashes'},
   {name:'Corn Sugar (Dextrose)', potential:384, ebc:0, origin:'USA', desc:'100% fermentable, no flavor — dries out beer, common priming sugar'},
   {name:'Cane Sugar (Sucrose)', potential:384, ebc:0, origin:'Australia', desc:'100% fermentable, lightens body, classic in Belgian ales'},
-  {name:'Brown Sugar', potential:376, ebc:38.5, origin:'Australia', desc:'Toffee/molasses sweetness, adds color and body'},
-  {name:'Honey', potential:292, ebc:1.1, origin:'Australia', desc:'Delicate floral sweetness, dries the beer out'},
-  {name:'Maple Syrup', potential:250, ebc:38.5, origin:'Canada', desc:'Distinct maple sweetness and light color'},
-  {name:'Molasses', potential:300, ebc:212.0, origin:'Various', desc:'Dark, robust, slightly bitter sweetness'},
-  {name:'Belgian Candi Sugar (Clear)', potential:384, ebc:1.1, origin:'Candi Syrup Inc. (USA) / Candi Belge (Belgium)', desc:'Fully fermentable, boosts ABV without adding body'},
-  {name:'Belgian Candi Sugar (Dark)', potential:376, ebc:158.6, origin:'Candi Syrup Inc. (USA) / Candi Belge (Belgium)', desc:'Rich rum/raisin notes, classic in dark Belgian ales'},
+  {name:'Brown Sugar', potential:376, ebc:29.5, origin:'Australia', desc:'Toffee/molasses sweetness, adds color and body'},
+  {name:'Honey', potential:292, ebc:1.9, origin:'Australia', desc:'Delicate floral sweetness, dries the beer out'},
+  {name:'Maple Syrup', potential:250, ebc:29.5, origin:'Canada', desc:'Distinct maple sweetness and light color'},
+  {name:'Molasses', potential:300, ebc:157.6, origin:'Various', desc:'Dark, robust, slightly bitter sweetness'},
+  {name:'Belgian Candi Sugar (Clear)', potential:384, ebc:1.9, origin:'Candi Syrup Inc. (USA) / Candi Belge (Belgium)', desc:'Fully fermentable, boosts ABV without adding body'},
+  {name:'Belgian Candi Sugar (Dark)', potential:376, ebc:118.2, origin:'Candi Syrup Inc. (USA) / Candi Belge (Belgium)', desc:'Rich rum/raisin notes, classic in dark Belgian ales'},
   {name:'Lactose (Milk Sugar)', potential:292, ebc:0, origin:'Various', desc:'Unfermentable — adds sweetness and body to milk stouts/sours'},
-  {name:'Light DME', potential:367, ebc:6.5, origin:'Muntons (England) / Briess (USA)', desc:'Neutral malt extract, used to boost gravity or for starters'},
-  {name:'Dark DME', potential:351, ebc:51.9, origin:'Muntons (England) / Briess (USA)', desc:'Malty, slightly caramelized extract with added color'},
-  {name:'Light LME', potential:300, ebc:9.2, origin:'Muntons (England) / Briess (USA)', desc:'Liquid malt extract, neutral sweetness'},
-  {name:'Dark LME', potential:292, ebc:51.9, origin:'Muntons (England) / Briess (USA)', desc:'Liquid malt extract with caramel/toffee character'},
-  {name:'Wheat DME - Muntons (ENG)', potential:351, ebc:6.5, origin:'Muntons (England)', desc:'Neutral wheat extract for boosting gravity'},
-  {name:'Wheat LME - Muntons (ENG)', potential:309, ebc:6.5, origin:'Muntons (England)', desc:'Liquid wheat extract, soft bready character'},
-  {name:'Pale Malt Extract - Muntons (ENG)', potential:300, ebc:6.5, origin:'Muntons (England)', desc:'General-purpose neutral extract'},
-  {name:'Acid Malt', potential:225, ebc:6.5, origin:'Weyermann (Germany) — "Sauermalz"', desc:'Lowers mash pH naturally, minimal flavor impact'},
-  {name:'Peated Malt', potential:309, ebc:3.8, origin:'Crisp Malting / Simpsons (Scotland)', desc:'Intense smoky, medicinal phenolic character'},
-  {name:'Joe White Traditional Ale Malt', potential:317, ebc:3.8, origin:'Australia (Joe White Maltings)', desc:'Full-flavoured Aussie base malt with a rich, bready backbone'},
-  {name:'Joe White Pilsner Malt', potential:309, ebc:2.5, origin:'Australia (Joe White Maltings)', desc:'Clean, delicate base malt for lagers and pale ales'},
-  {name:'Joe White Vienna Malt', potential:300, ebc:7.9, origin:'Australia (Joe White Maltings)', desc:'Light toasty sweetness, gentle amber colour'},
-  {name:'Joe White Light Munich Malt', potential:292, ebc:14.5, origin:'Australia (Joe White Maltings)', desc:'Malty depth for Munich-style lagers and amber ales'},
-  {name:'Joe White Dark Munich Malt', potential:284, ebc:30.5, origin:'Australia (Joe White Maltings)', desc:'Richer toasted-bread character and deeper colour'},
-  {name:'Joe White Wheat Malt', potential:317, ebc:3.8, origin:'Australia (Joe White Maltings)', desc:'Boosts head retention with a soft, bready wheat character'},
-  {name:'Joe White Caramalt', potential:292, ebc:51.9, origin:'Australia (Joe White Maltings)', desc:'Light caramel sweetness and golden colour'},
-  {name:'Joe White Dark Crystal Malt', potential:275, ebc:158.6, origin:'Australia (Joe White Maltings)', desc:'Rich caramel and dried-fruit character, deep amber-brown'},
+  {name:'Light DME', potential:367, ebc:5.9, origin:'Muntons (England) / Briess (USA)', desc:'Neutral malt extract, used to boost gravity or for starters'},
+  {name:'Dark DME', potential:351, ebc:39.4, origin:'Muntons (England) / Briess (USA)', desc:'Malty, slightly caramelized extract with added color'},
+  {name:'Light LME', potential:300, ebc:7.9, origin:'Muntons (England) / Briess (USA)', desc:'Liquid malt extract, neutral sweetness'},
+  {name:'Dark LME', potential:292, ebc:39.4, origin:'Muntons (England) / Briess (USA)', desc:'Liquid malt extract with caramel/toffee character'},
+  {name:'Wheat DME - Muntons (ENG)', potential:351, ebc:5.9, origin:'Muntons (England)', desc:'Neutral wheat extract for boosting gravity'},
+  {name:'Wheat LME - Muntons (ENG)', potential:309, ebc:5.9, origin:'Muntons (England)', desc:'Liquid wheat extract, soft bready character'},
+  {name:'Pale Malt Extract - Muntons (ENG)', potential:300, ebc:5.9, origin:'Muntons (England)', desc:'General-purpose neutral extract'},
+  {name:'Acid Malt', potential:225, ebc:5.9, origin:'Weyermann (Germany) — "Sauermalz"', desc:'Lowers mash pH naturally, minimal flavor impact'},
+  {name:'Peated Malt', potential:309, ebc:3.9, origin:'Crisp Malting / Simpsons (Scotland)', desc:'Intense smoky, medicinal phenolic character'},
+  {name:'Joe White Traditional Ale Malt', potential:317, ebc:3.9, origin:'Australia (Joe White Maltings)', desc:'Full-flavoured Aussie base malt with a rich, bready backbone'},
+  {name:'Joe White Pilsner Malt', potential:309, ebc:3.0, origin:'Australia (Joe White Maltings)', desc:'Clean, delicate base malt for lagers and pale ales'},
+  {name:'Joe White Vienna Malt', potential:300, ebc:6.9, origin:'Australia (Joe White Maltings)', desc:'Light toasty sweetness, gentle amber colour'},
+  {name:'Joe White Light Munich Malt', potential:292, ebc:11.8, origin:'Australia (Joe White Maltings)', desc:'Malty depth for Munich-style lagers and amber ales'},
+  {name:'Joe White Dark Munich Malt', potential:284, ebc:23.6, origin:'Australia (Joe White Maltings)', desc:'Richer toasted-bread character and deeper colour'},
+  {name:'Joe White Wheat Malt', potential:317, ebc:3.9, origin:'Australia (Joe White Maltings)', desc:'Boosts head retention with a soft, bready wheat character'},
+  {name:'Joe White Caramalt', potential:292, ebc:39.4, origin:'Australia (Joe White Maltings)', desc:'Light caramel sweetness and golden colour'},
+  {name:'Joe White Dark Crystal Malt', potential:275, ebc:118.2, origin:'Australia (Joe White Maltings)', desc:'Rich caramel and dried-fruit character, deep amber-brown'},
   {name:'Joe White Chocolate Malt', potential:234, ebc:932.7, origin:'Australia (Joe White Maltings)', desc:'Roasted, chocolatey depth with dark brown colour'},
   {name:'Joe White Roasted Barley', potential:234, ebc:799.2, origin:'Australia (Joe White Maltings)', desc:'Dry roasted coffee character, classic stout ingredient'},
   {name:'Joe White Black Malt', potential:209, ebc:1333.0, origin:'Australia (Joe White Maltings)', desc:'Sharp roasted character, used sparingly for colour'},
-  {name:'BB Pale Ale Malt', potential:317, ebc:6.5, origin:'Australia (Barrett Burston)', desc:'Workhorse Australian base malt with a soft malty character'},
-  {name:'BB Pilsner Malt', potential:309, ebc:2.5, origin:'Australia (Barrett Burston)', desc:'Delicate, clean base malt for lagers and pale styles'},
-  {name:'BB Vienna Malt', potential:300, ebc:9.2, origin:'Australia (Barrett Burston)', desc:'Toasty amber malt, adds gentle depth to lagers and ambers'},
-  {name:'BB Munich Malt', potential:292, ebc:19.9, origin:'Australia (Barrett Burston)', desc:'Rich malty sweetness for Munich-style beers'},
-  {name:'BB Wheat Malt', potential:317, ebc:3.8, origin:'Australia (Barrett Burston)', desc:'Improves head retention with soft wheat character'},
-  {name:'BB Crystal Malt Medium', potential:284, ebc:145.3, origin:'Australia (Barrett Burston)', desc:'Classic caramel sweetness, amber-copper colour'},
-  {name:'BB Crystal Malt Dark', potential:275, ebc:238.7, origin:'Australia (Barrett Burston)', desc:'Deep caramel and dried-fruit notes, dark copper colour'},
+  {name:'BB Pale Ale Malt', potential:317, ebc:5.9, origin:'Australia (Barrett Burston)', desc:'Workhorse Australian base malt with a soft malty character'},
+  {name:'BB Pilsner Malt', potential:309, ebc:3.0, origin:'Australia (Barrett Burston)', desc:'Delicate, clean base malt for lagers and pale styles'},
+  {name:'BB Vienna Malt', potential:300, ebc:7.9, origin:'Australia (Barrett Burston)', desc:'Toasty amber malt, adds gentle depth to lagers and ambers'},
+  {name:'BB Munich Malt', potential:292, ebc:15.8, origin:'Australia (Barrett Burston)', desc:'Rich malty sweetness for Munich-style beers'},
+  {name:'BB Wheat Malt', potential:317, ebc:3.9, origin:'Australia (Barrett Burston)', desc:'Improves head retention with soft wheat character'},
+  {name:'BB Crystal Malt Medium', potential:284, ebc:108.4, origin:'Australia (Barrett Burston)', desc:'Classic caramel sweetness, amber-copper colour'},
+  {name:'BB Crystal Malt Dark', potential:275, ebc:177.3, origin:'Australia (Barrett Burston)', desc:'Deep caramel and dried-fruit notes, dark copper colour'},
   {name:'BB Chocolate Malt', potential:234, ebc:932.7, origin:'Australia (Barrett Burston)', desc:'Roasted chocolate character and dark colour'},
   {name:'BB Black Malt', potential:209, ebc:1333.0, origin:'Australia (Barrett Burston)', desc:'Intense roasted character, used sparingly for colour'},
-  {name:'Voyager Pale Malt', potential:317, ebc:6.5, origin:'Australia (Voyager Craft Malt, WA)', desc:'WA-grown craft base malt with a soft, biscuity note'},
-  {name:'Voyager Wheat Malt', potential:317, ebc:5.2, origin:'Australia (Voyager Craft Malt, WA)', desc:'Craft wheat malt, soft and bready, boosts head retention'},
-  {name:'Voyager Rye Malt', potential:300, ebc:6.5, origin:'Australia (Voyager Craft Malt, WA)', desc:'Spicy rye character from WA-grown grain'},
-  {name:'Voyager Oat Malt', potential:275, ebc:3.8, origin:'Australia (Voyager Craft Malt, WA)', desc:'Silky mouthfeel, great for oatmeal stouts and hazy styles'},
-  {name:'Voyager Vienna Malt', potential:300, ebc:11.9, origin:'Australia (Voyager Craft Malt, WA)', desc:'Toasty amber malt from West Australian grain'},
-  {name:'Powells Pale Ale Malt', potential:317, ebc:6.5, origin:'Australia (Powells Craft Malt, TAS)', desc:'Tasmanian-grown craft base malt, soft and malty'},
-  {name:'Powells Pilsner Malt', potential:309, ebc:3.3, origin:'Australia (Powells Craft Malt, TAS)', desc:'Clean Tasmanian base malt for lagers and pale ales'},
-  {name:'Powells Munich Malt', potential:292, ebc:22.5, origin:'Australia (Powells Craft Malt, TAS)', desc:'Rich malty character from Tasmanian-grown barley'},
+  {name:'Voyager Pale Malt', potential:317, ebc:5.9, origin:'Australia (Voyager Craft Malt, WA)', desc:'WA-grown craft base malt with a soft, biscuity note'},
+  {name:'Voyager Wheat Malt', potential:317, ebc:4.9, origin:'Australia (Voyager Craft Malt, WA)', desc:'Craft wheat malt, soft and bready, boosts head retention'},
+  {name:'Voyager Rye Malt', potential:300, ebc:5.9, origin:'Australia (Voyager Craft Malt, WA)', desc:'Spicy rye character from WA-grown grain'},
+  {name:'Voyager Oat Malt', potential:275, ebc:3.9, origin:'Australia (Voyager Craft Malt, WA)', desc:'Silky mouthfeel, great for oatmeal stouts and hazy styles'},
+  {name:'Voyager Vienna Malt', potential:300, ebc:9.9, origin:'Australia (Voyager Craft Malt, WA)', desc:'Toasty amber malt from West Australian grain'},
+  {name:'Powells Pale Ale Malt', potential:317, ebc:5.9, origin:'Australia (Powells Craft Malt, TAS)', desc:'Tasmanian-grown craft base malt, soft and malty'},
+  {name:'Powells Pilsner Malt', potential:309, ebc:3.5, origin:'Australia (Powells Craft Malt, TAS)', desc:'Clean Tasmanian base malt for lagers and pale ales'},
+  {name:'Powells Munich Malt', potential:292, ebc:17.7, origin:'Australia (Powells Craft Malt, TAS)', desc:'Rich malty character from Tasmanian-grown barley'},
   {name:'Powells Wheat Malt', potential:317, ebc:4.3, origin:'Australia (Powells Craft Malt, TAS)', desc:'Soft, bready Tasmanian wheat malt'},
-  {name:'Powells Rye Malt', potential:300, ebc:7.9, origin:'Australia (Powells Craft Malt, TAS)', desc:'Spicy rye character, Tasmanian-grown'},
-  {name:'Sorghum Malt - Grouse Malt House (AUS)', potential:300, ebc:3.8, origin:'Grouse Malt House (Australia)', desc:'Mild, slightly tangy — the most common gluten-free brewing base malt'},
-  {name:'Millet Malt - Grouse Malt House (AUS)', potential:292, ebc:3.8, origin:'Grouse Malt House (Australia)', desc:'Light, neutral, slightly sweet — versatile gluten-free base malt'},
-  {name:'Buckwheat Malt - Grouse Malt House (AUS)', potential:250, ebc:6.5, origin:'Grouse Malt House (Australia)', desc:'Nutty, earthy gluten-free pseudo-cereal character, husk-free'},
-  {name:'Quinoa Malt - Grouse Malt House (AUS)', potential:250, ebc:6.5, origin:'Grouse Malt House (Australia)', desc:'Light nutty flavour, gluten-free pseudo-cereal that adds protein and body'},
-  {name:'Chestnut Malt - Grouse Malt House (AUS)', potential:250, ebc:38.5, origin:'Grouse Malt House (Australia)', desc:'Rich, nutty-sweet — used in dark gluten-free beers'},
-  {name:'Rice Malt', potential:317, ebc:1.1, origin:'Various (GF specialty maltsters)', desc:'Very neutral, lightens body — common gluten-free lager base'},
-  {name:'Teff Malt', potential:275, ebc:9.2, origin:'Various (GF specialty maltsters)', desc:'Earthy, slightly sweet gluten-free Ethiopian grain, used in specialty GF beers'},
+  {name:'Powells Rye Malt', potential:300, ebc:6.9, origin:'Australia (Powells Craft Malt, TAS)', desc:'Spicy rye character, Tasmanian-grown'},
+  {name:'Sorghum Malt - Grouse Malt House (AUS)', potential:300, ebc:3.9, origin:'Grouse Malt House (Australia)', desc:'Mild, slightly tangy — the most common gluten-free brewing base malt'},
+  {name:'Millet Malt - Grouse Malt House (AUS)', potential:292, ebc:3.9, origin:'Grouse Malt House (Australia)', desc:'Light, neutral, slightly sweet — versatile gluten-free base malt'},
+  {name:'Buckwheat Malt - Grouse Malt House (AUS)', potential:250, ebc:5.9, origin:'Grouse Malt House (Australia)', desc:'Nutty, earthy gluten-free pseudo-cereal character, husk-free'},
+  {name:'Quinoa Malt - Grouse Malt House (AUS)', potential:250, ebc:5.9, origin:'Grouse Malt House (Australia)', desc:'Light nutty flavour, gluten-free pseudo-cereal that adds protein and body'},
+  {name:'Chestnut Malt - Grouse Malt House (AUS)', potential:250, ebc:29.5, origin:'Grouse Malt House (Australia)', desc:'Rich, nutty-sweet — used in dark gluten-free beers'},
+  {name:'Rice Malt', potential:317, ebc:1.9, origin:'Various (GF specialty maltsters)', desc:'Very neutral, lightens body — common gluten-free lager base'},
+  {name:'Teff Malt', potential:275, ebc:7.9, origin:'Various (GF specialty maltsters)', desc:'Earthy, slightly sweet gluten-free Ethiopian grain, used in specialty GF beers'},
   {name:'Maltodextrin - Briess (USA)', potential:334, ebc:0, origin:'Briess (USA)', desc:'Unfermentable — boosts body and mouthfeel without adding sweetness or ABV'},
   {name:'Corn Syrup / Glucose Syrup - Various', potential:351, ebc:0, origin:'Various', desc:'Highly fermentable, thins body — classic light-lager and cider adjunct'},
-  {name:'Invert Sugar No. 1 - Ragus (ENG)', potential:384, ebc:6.5, origin:'Ragus Sugars (England)', desc:'Fully fermentable, pale — traditional British brewing sugar, dries the beer'},
-  {name:'Invert Sugar No. 2 - Ragus (ENG)', potential:376, ebc:105.3, origin:'Ragus Sugars (England)', desc:'Fully fermentable with toffee notes — used in British ales and old ales'},
-  {name:'Rolled Oats - Various', potential:275, ebc:1.2, origin:'Various', desc:'Needs cooking/longer mash — silky body for oatmeal stouts and hazy styles'},
-  {name:'Torrified Rye - Simpsons Malt (ENG)', potential:275, ebc:6.5, origin:'Simpsons Malt (England)', desc:'Puffed rye — spicy character with improved lauter-ability over raw rye'},
-  {name:'Amber Malt - Crisp Malting (ENG)', potential:275, ebc:91.9, origin:'Crisp Malting (England)', desc:'Toasted, biscuity, dry — historic English mild and old ale character'},
+  {name:'Invert Sugar No. 1 - Ragus (ENG)', potential:384, ebc:5.9, origin:'Ragus Sugars (England)', desc:'Fully fermentable, pale — traditional British brewing sugar, dries the beer'},
+  {name:'Invert Sugar No. 2 - Ragus (ENG)', potential:376, ebc:78.8, origin:'Ragus Sugars (England)', desc:'Fully fermentable with toffee notes — used in British ales and old ales'},
+  {name:'Rolled Oats - Various', potential:275, ebc:2.0, origin:'Various', desc:'Needs cooking/longer mash — silky body for oatmeal stouts and hazy styles'},
+  {name:'Torrified Rye - Simpsons Malt (ENG)', potential:275, ebc:5.9, origin:'Simpsons Malt (England)', desc:'Puffed rye — spicy character with improved lauter-ability over raw rye'},
+  {name:'Amber Malt - Crisp Malting (ENG)', potential:275, ebc:68.9, origin:'Crisp Malting (England)', desc:'Toasted, biscuity, dry — historic English mild and old ale character'},
   {name:'Brown Malt - Crisp Malting (ENG)', potential:250, ebc:172.0, origin:'Crisp Malting (England)', desc:'Dry roasted, nutty and smoky — the historic porter malt'},
   {name:'Coffee Malt - Simpsons Malt (ENG)', potential:234, ebc:398.9, origin:'Simpsons Malt (England)', desc:'Deep roast, dehusked — coffee-like character without harsh astringency'},
   {name:'Midnight Wheat - Briess (USA)', potential:225, ebc:599.0, origin:'Briess (USA)', desc:'Dehusked black wheat — smooth dark colour with minimal roast bitterness'},
-  {name:'Extra Special Malt - Briess (USA)', potential:284, ebc:38.5, origin:'Briess (USA)', desc:'Biscuity, toffee and dried-fruit complexity — English-style specialty malt'},
-  {name:'Abbey Malt - Castle Malting (BEL)', potential:275, ebc:30.5, origin:'Castle Malting (Belgium)', desc:'Rich malty sweetness with a touch of colour — classic Belgian dark ale character'},
-  {name:'Dark Wheat Malt - Weyermann (GER)', potential:317, ebc:30.5, origin:'Weyermann (Germany)', desc:'Toasty wheat character — adds colour and body to dunkelweizen'},
-  {name:'White Wheat Malt - Weyermann (GER)', potential:317, ebc:2.5, origin:'Weyermann (Germany)', desc:'Very pale, delicate wheat malt — distinct from standard red wheat'},
-  {name:'Crystal Rye Malt - Weyermann (GER)', potential:284, ebc:91.9, origin:'Weyermann (Germany)', desc:'Spicy caramel rye character, adds colour and body'},
-  {name:'Smoked Wheat Malt - Weyermann (GER)', potential:309, ebc:3.8, origin:'Weyermann (Germany)', desc:'Light smoke character on a soft wheat base'},
+  {name:'Extra Special Malt - Briess (USA)', potential:284, ebc:29.5, origin:'Briess (USA)', desc:'Biscuity, toffee and dried-fruit complexity — English-style specialty malt'},
+  {name:'Abbey Malt - Castle Malting (BEL)', potential:275, ebc:23.6, origin:'Castle Malting (Belgium)', desc:'Rich malty sweetness with a touch of colour — classic Belgian dark ale character'},
+  {name:'Dark Wheat Malt - Weyermann (GER)', potential:317, ebc:23.6, origin:'Weyermann (Germany)', desc:'Toasty wheat character — adds colour and body to dunkelweizen'},
+  {name:'White Wheat Malt - Weyermann (GER)', potential:317, ebc:3.0, origin:'Weyermann (Germany)', desc:'Very pale, delicate wheat malt — distinct from standard red wheat'},
+  {name:'Crystal Rye Malt - Weyermann (GER)', potential:284, ebc:68.9, origin:'Weyermann (Germany)', desc:'Spicy caramel rye character, adds colour and body'},
+  {name:'Smoked Wheat Malt - Weyermann (GER)', potential:309, ebc:3.9, origin:'Weyermann (Germany)', desc:'Light smoke character on a soft wheat base'},
+  {name:'Barke Pilsner - Weyermann (GER)', potential:309, ebc:3.5, origin:'Weyermann (Germany)', desc:'Pilsner malt from Barke barley — clean, delicately sweet and bready'},
+  {name:'Barke Munich - Weyermann (GER)', potential:300, ebc:20, origin:'Weyermann (Germany)', desc:'Munich malt from Barke barley — rich, rounded malt depth'},
+  {name:'Bohemian Pilsner - Weyermann (GER)', potential:309, ebc:3.5, origin:'Weyermann (Germany)', desc:'Pilsner malt for Czech-style lagers — soft, honeyed and grainy'},
+  {name:'Floor-Malted Bohemian Pilsner - Weyermann (GER)', potential:300, ebc:3.5, origin:'Weyermann (Germany)', desc:'Traditionally floor-malted — fuller, more complex Pilsner character'},
+  {name:'Pale Ale Malt - Weyermann (GER)', potential:309, ebc:6, origin:'Weyermann (Germany)', desc:'Lightly kilned pale ale malt — biscuity and clean, great for hop-forward ales'},
+  {name:'Pale Wheat Malt - Weyermann (GER)', potential:317, ebc:4, origin:'Weyermann (Germany)', desc:'Wheat malt — fresh bread, soft body and stable foam'},
+  {name:'Carafoam - Weyermann (GER)', potential:275, ebc:4, origin:'Weyermann (Germany)', desc:'Dextrin malt — body and head retention without added sweetness or colour'},
+  {name:'CaraAmber - Weyermann (GER)', potential:284, ebc:70, origin:'Weyermann (Germany)', desc:'Amber caramel malt — bread crust and light caramel'},
+  {name:'CaraBohemian - Weyermann (GER)', potential:275, ebc:230, origin:'Weyermann (Germany)', desc:'Dark caramel malt with toffee and dried-fruit notes'},
+  {name:'Carafa Special I - Weyermann (GER)', potential:267, ebc:900, origin:'Weyermann (Germany)', desc:'Dehusked roasted malt — smooth dark colour with minimal harshness'},
+  {name:'Carafa Special II - Weyermann (GER)', potential:267, ebc:1150, origin:'Weyermann (Germany)', desc:'Dehusked roasted malt — deeper colour, soft roast, low astringency'},
+  {name:'Carafa Special III - Weyermann (GER)', potential:267, ebc:1400, origin:'Weyermann (Germany)', desc:'Dehusked roasted malt — near-black, smooth and mellow'},
+  {name:'Chocolate Rye - Weyermann (GER)', potential:250, ebc:750, origin:'Weyermann (Germany)', desc:'Roasted rye — spicy cocoa and dry roast'},
+  {name:'Chocolate Wheat - Weyermann (GER)', potential:250, ebc:900, origin:'Weyermann (Germany)', desc:'Roasted wheat — mellow chocolate and smooth dark colour'},
+  {name:'Spelt Malt - Weyermann (GER)', potential:292, ebc:5, origin:'Weyermann (Germany)', desc:'Nutty, slightly sweet ancient-grain malt — good in saisons and wheat styles'},
+  {name:'Oak-Smoked Wheat Malt - Weyermann (GER)', potential:300, ebc:4, origin:'Weyermann (Germany)', desc:'Gently smoked wheat malt with oak warmth'},
+  {name:'Best Ale Malt - Simpsons Malt (ENG)', potential:309, ebc:5.5, origin:'Simpsons Malt (England)', desc:'Classic English pale malt — soft, nutty and bready'},
+  {name:'Finest Maris Otter - Simpsons Malt (ENG)', potential:317, ebc:5.5, origin:'Simpsons Malt (England)', desc:'Premium Maris Otter — rich, biscuity depth'},
+  {name:'Low Colour Maris Otter - Simpsons Malt (ENG)', potential:317, ebc:4, origin:'Simpsons Malt (England)', desc:'Lighter Maris Otter — the same character in a paler colour'},
+  {name:'Extra Pale Crystal - Simpsons Malt (ENG)', potential:284, ebc:35, origin:'Simpsons Malt (England)', desc:'Very light caramel malt — subtle sweetness and body'},
+  {name:'Light Crystal - Simpsons Malt (ENG)', potential:284, ebc:60, origin:'Simpsons Malt (England)', desc:'Light caramel and honey notes'},
+  {name:'Medium Crystal - Simpsons Malt (ENG)', potential:284, ebc:125, origin:'Simpsons Malt (England)', desc:'Classic caramel and toffee sweetness'},
+  {name:'Dark Crystal - Simpsons Malt (ENG)', potential:275, ebc:175, origin:'Simpsons Malt (England)', desc:'Deep caramel with dark-fruit notes'},
+  {name:'Extra Dark Crystal - Simpsons Malt (ENG)', potential:267, ebc:300, origin:'Simpsons Malt (England)', desc:'Dark toffee, raisin and burnt-sugar character'},
+  {name:'Double Roasted Crystal - Simpsons Malt (ENG)', potential:267, ebc:320, origin:'Simpsons Malt (England)', desc:'Roasted caramel malt — raisin, dark fruit and toasty bitterness'},
+  {name:'Imperial Malt - Simpsons Malt (ENG)', potential:284, ebc:50, origin:'Simpsons Malt (England)', desc:'Biscuity and toasty — baked-bread warmth'},
+  {name:'Chocolate Malt - Simpsons Malt (ENG)', potential:234, ebc:900, origin:'Simpsons Malt (England)', desc:'Roasted cocoa and coffee, classic porter and stout malt'},
+  {name:'Black Malt - Simpsons Malt (ENG)', potential:209, ebc:1300, origin:'Simpsons Malt (England)', desc:'Sharp roast and deep colour — use sparingly'},
+  {name:'Roasted Barley - Simpsons Malt (ENG)', potential:234, ebc:950, origin:'Simpsons Malt (England)', desc:'Dry, coffee-like roast — the stout signature'},
+  {name:'Brown Malt - Simpsons Malt (ENG)', potential:250, ebc:150, origin:'Simpsons Malt (England)', desc:'Dry, nutty, smoky — traditional porter malt'},
+  {name:'Best Ale Malt - Crisp Malting (ENG)', potential:309, ebc:6, origin:'Crisp Malting (England)', desc:'Versatile English ale malt — clean, malty and biscuity'},
+  {name:'Extra Pale Maris Otter - Crisp Malting (ENG)', potential:317, ebc:4.5, origin:'Crisp Malting (England)', desc:'Pale Maris Otter — nutty, full-flavoured, light colour'},
+  {name:'Floor-Malted Maris Otter - Crisp Malting (ENG)', potential:317, ebc:6, origin:'Crisp Malting (England)', desc:'Traditionally floor-malted — the fullest, richest Maris Otter'},
+  {name:'Crystal 45 - Crisp Malting (ENG)', potential:284, ebc:115, origin:'Crisp Malting (England)', desc:'Light-medium caramel — toffee and sweetness'},
+  {name:'Crystal 77 - Crisp Malting (ENG)', potential:284, ebc:195, origin:'Crisp Malting (England)', desc:'Medium-dark caramel — raisin, burnt sugar and body'},
+  {name:'Crystal 150 - Crisp Malting (ENG)', potential:275, ebc:390, origin:'Crisp Malting (England)', desc:'Very dark caramel — dark fruit and bittersweet notes'},
+  {name:'Maris Otter - Thomas Fawcett (ENG)', potential:317, ebc:5.5, origin:'Thomas Fawcett & Sons (England)', desc:'Traditional Maris Otter — rich and biscuity'},
+  {name:'Pale Ale Malt - Thomas Fawcett (ENG)', potential:309, ebc:6, origin:'Thomas Fawcett & Sons (England)', desc:'Clean, malty English pale ale malt'},
+  {name:'Optic Pale Malt - Thomas Fawcett (ENG)', potential:309, ebc:5, origin:'Thomas Fawcett & Sons (England)', desc:'Optic barley malt — clean, bready and high-yielding'},
+  {name:'Crystal Malt - Thomas Fawcett (ENG)', potential:284, ebc:150, origin:'Thomas Fawcett & Sons (England)', desc:'Classic caramel malt — toffee and dried fruit'},
+  {name:'Chocolate Malt - Thomas Fawcett (ENG)', potential:234, ebc:900, origin:'Thomas Fawcett & Sons (England)', desc:'Roasted cocoa and coffee notes'},
+  {name:'Black Malt - Thomas Fawcett (ENG)', potential:209, ebc:1300, origin:'Thomas Fawcett & Sons (England)', desc:'Dry, sharp roast and deep colour'},
+  {name:'Maris Otter - Muntons (ENG)', potential:317, ebc:5.5, origin:'Muntons (England)', desc:'Muntons Maris Otter — soft, biscuity and malty'},
+  {name:'Propino Pale Ale Malt - Muntons (ENG)', potential:309, ebc:5.5, origin:'Muntons (England)', desc:'Clean, consistent pale ale malt with good foam'},
+  {name:'Crystal Malt - Muntons (ENG)', potential:284, ebc:150, origin:'Muntons (England)', desc:'Caramel and toffee sweetness'},
+  {name:'Chocolate Malt - Muntons (ENG)', potential:234, ebc:900, origin:'Muntons (England)', desc:'Roasted cocoa, coffee and dark colour'},
+  {name:'Black Malt - Muntons (ENG)', potential:209, ebc:1300, origin:'Muntons (England)', desc:'Sharp roast and deep colour'},
+  {name:'Wheat Malt - Muntons (ENG)', potential:317, ebc:4, origin:'Muntons (England)', desc:'Soft bready wheat character, helps head retention'},
+  {name:'Pale Ale Malt - Bairds Malt (SCO)', potential:309, ebc:6, origin:'Bairds Malt (Scotland)', desc:'Clean Scottish pale malt with a soft malty sweetness'},
+  {name:'Crystal Malt - Bairds Malt (SCO)', potential:284, ebc:150, origin:'Bairds Malt (Scotland)', desc:'Caramel and toffee sweetness'},
+  {name:'Roasted Barley - Bairds Malt (SCO)', potential:234, ebc:950, origin:'Bairds Malt (Scotland)', desc:'Dry, coffee-like roast'},
+  {name:'Floor-Malted Maris Otter - Warminster Maltings (ENG)', potential:317, ebc:6, origin:'Warminster Maltings (England)', desc:'Traditionally floor-malted — deep, rich, biscuity'},
+  {name:'Floor-Malted Pale Ale Malt - Warminster Maltings (ENG)', potential:309, ebc:6, origin:'Warminster Maltings (England)', desc:'Floor-malted pale ale malt — fuller, rounder malt character'},
+  {name:'Amber Malt - Warminster Maltings (ENG)', potential:275, ebc:70, origin:'Warminster Maltings (England)', desc:'Toasty, biscuity — historic mild and old ale malt'},
+  {name:'American Ale Malt - Gladfield (NZL)', potential:309, ebc:4, origin:'Gladfield Malt (New Zealand)', desc:'Clean, neutral base for hoppy ales'},
+  {name:'Ale Malt - Gladfield (NZL)', potential:309, ebc:5, origin:'Gladfield Malt (New Zealand)', desc:'Soft, biscuity base malt — a staple of NZ and Aussie craft brewing'},
+  {name:'Pilsner Malt - Gladfield (NZL)', potential:309, ebc:3.5, origin:'Gladfield Malt (New Zealand)', desc:'Delicate, honeyed base malt for lagers and pale beers'},
+  {name:'Vienna Malt - Gladfield (NZL)', potential:300, ebc:8, origin:'Gladfield Malt (New Zealand)', desc:'Light toasty sweetness and gentle amber colour'},
+  {name:'Munich Malt - Gladfield (NZL)', potential:292, ebc:25, origin:'Gladfield Malt (New Zealand)', desc:'Rich malty, bready depth'},
+  {name:'Wheat Malt - Gladfield (NZL)', potential:317, ebc:4, origin:'Gladfield Malt (New Zealand)', desc:'Soft wheat character, body and head retention'},
+  {name:'Light Crystal - Gladfield (NZL)', potential:284, ebc:40, origin:'Gladfield Malt (New Zealand)', desc:'Light caramel sweetness and golden colour'},
+  {name:'Medium Crystal - Gladfield (NZL)', potential:284, ebc:130, origin:'Gladfield Malt (New Zealand)', desc:'Classic caramel and toffee notes'},
+  {name:'Dark Crystal - Gladfield (NZL)', potential:275, ebc:280, origin:'Gladfield Malt (New Zealand)', desc:'Dark caramel and dried-fruit character'},
+  {name:'Toffee Malt - Gladfield (NZL)', potential:284, ebc:50, origin:'Gladfield Malt (New Zealand)', desc:'Sweet toffee and caramel — soft and rounded'},
+  {name:'Aroma Malt - Gladfield (NZL)', potential:284, ebc:55, origin:'Gladfield Malt (New Zealand)', desc:'Malty, bready — a melanoidin-style malt'},
+  {name:'Biscuit Malt - Gladfield (NZL)', potential:292, ebc:45, origin:'Gladfield Malt (New Zealand)', desc:'Toasted biscuit and cracker flavour'},
+  {name:'Light Chocolate Malt - Gladfield (NZL)', potential:250, ebc:550, origin:'Gladfield Malt (New Zealand)', desc:'Gentle cocoa roast for brown ales and porters'},
+  {name:'Dark Chocolate Malt - Gladfield (NZL)', potential:234, ebc:1000, origin:'Gladfield Malt (New Zealand)', desc:'Deep cocoa and coffee roast'},
+  {name:'Roast Barley - Gladfield (NZL)', potential:234, ebc:1000, origin:'Gladfield Malt (New Zealand)', desc:'Dry coffee-like roast for stouts'},
+  {name:'Pilsen Malt - Dingemans (BEL)', potential:309, ebc:3.5, origin:'Dingemans (Belgium)', desc:'Clean, delicate Belgian base malt'},
+  {name:'Pale Ale Malt - Dingemans (BEL)', potential:309, ebc:6, origin:'Dingemans (Belgium)', desc:'Biscuity, malty pale ale base'},
+  {name:'Special B - Dingemans (BEL)', potential:259, ebc:280, origin:'Dingemans (Belgium)', desc:'Intense dark fruit, raisin and caramel — dubbel and quad essential'},
+  {name:'CaraVienne - Dingemans (BEL)', potential:284, ebc:45, origin:'Dingemans (Belgium)', desc:'Light caramel with biscuit and toffee notes'},
+  {name:'Pilsen 2RS - Castle Malting (BEL)', potential:309, ebc:3.5, origin:'Castle Malting (Belgium)', desc:'Clean, bready Pilsner malt'},
+  {name:'Chateau Pale Ale - Castle Malting (BEL)', potential:309, ebc:6, origin:'Castle Malting (Belgium)', desc:'Biscuity, rounded pale ale malt'},
+  {name:'Chateau Munich - Castle Malting (BEL)', potential:292, ebc:18, origin:'Castle Malting (Belgium)', desc:'Rich malty depth with toasty notes'},
+  {name:'Special B - Castle Malting (BEL)', potential:259, ebc:300, origin:'Castle Malting (Belgium)', desc:'Raisin, plum and burnt-sugar character'},
+  {name:'Wheat Blanc - Castle Malting (BEL)', potential:317, ebc:4, origin:'Castle Malting (Belgium)', desc:'Soft, bready wheat malt for witbier'},
+  {name:'Pilsen Malt - BEST Malz (GER)', potential:309, ebc:3.5, origin:'BEST Malz (Germany)', desc:'Clean, honeyed Pilsner malt'},
+  {name:'Munich Malt - BEST Malz (GER)', potential:300, ebc:16, origin:'BEST Malz (Germany)', desc:'Malty, bready Munich malt'},
+  {name:'Pilsner Malt - Viking Malt (FIN)', potential:309, ebc:3.5, origin:'Viking Malt (Finland)', desc:'Clean, crisp base malt for lagers and pale beers'},
+  {name:'Pale Ale Malt - Viking Malt (FIN)', potential:309, ebc:5.5, origin:'Viking Malt (Finland)', desc:'Soft, biscuity pale ale base'},
+  {name:'2-Row Brewers Malt - Briess (USA)', potential:309, ebc:3.5, origin:'Briess (USA)', desc:'Neutral, clean American base malt'},
+  {name:'Pale Ale Malt - Briess (USA)', potential:309, ebc:6, origin:'Briess (USA)', desc:'Biscuity, malty pale ale base'},
+  {name:'Pilsen Malt - Briess (USA)', potential:309, ebc:3, origin:'Briess (USA)', desc:'Delicate, light-bodied base for lagers'},
+  {name:'Bohemian Pilsen Malt - Briess (USA)', potential:309, ebc:3.5, origin:'Briess (USA)', desc:'Soft, honeyed base for Czech-style lagers'},
+  {name:'Munich Malt 10L - Briess (USA)', potential:292, ebc:20, origin:'Briess (USA)', desc:'Malty, bready — light Munich'},
+  {name:'Munich Malt 20L - Briess (USA)', potential:292, ebc:40, origin:'Briess (USA)', desc:'Deeper toasted malt and colour'},
+  {name:'Vienna Malt - Briess (USA)', potential:300, ebc:7, origin:'Briess (USA)', desc:'Light toasty sweetness'},
+  {name:'Caramel 10L - Briess (USA)', potential:292, ebc:20, origin:'Briess (USA)', desc:'Light caramel sweetness'},
+  {name:'Caramel 20L - Briess (USA)', potential:292, ebc:40, origin:'Briess (USA)', desc:'Light-medium caramel and honey'},
+  {name:'Caramel 30L - Briess (USA)', potential:284, ebc:60, origin:'Briess (USA)', desc:'Caramel and toffee'},
+  {name:'Caramel 40L - Briess (USA)', potential:284, ebc:80, origin:'Briess (USA)', desc:'Classic caramel sweetness'},
+  {name:'Caramel 60L - Briess (USA)', potential:284, ebc:120, origin:'Briess (USA)', desc:'Rich caramel, toffee'},
+  {name:'Caramel 80L - Briess (USA)', potential:275, ebc:160, origin:'Briess (USA)', desc:'Dark caramel and raisin'},
+  {name:'Caramel 90L - Briess (USA)', potential:275, ebc:180, origin:'Briess (USA)', desc:'Deep caramel, dried fruit'},
+  {name:'Caramel 120L - Briess (USA)', potential:275, ebc:240, origin:'Briess (USA)', desc:'Dark toffee and burnt sugar'},
+  {name:'Brown Malt - Briess (USA)', potential:250, ebc:115, origin:'Briess (USA)', desc:'Dry, toasty, biscuity'},
+  {name:'Chocolate Malt - Briess (USA)', potential:234, ebc:800, origin:'Briess (USA)', desc:'Roasted cocoa and coffee'},
+  {name:'Black Barley - Briess (USA)', potential:209, ebc:1300, origin:'Briess (USA)', desc:'Unmalted roasted barley — sharp, dry roast'},
+  {name:'Roasted Barley - Briess (USA)', potential:209, ebc:1000, origin:'Briess (USA)', desc:'Dry, coffee-like roast'},
+  {name:'Blackprinz - Briess (USA)', potential:225, ebc:950, origin:'Briess (USA)', desc:'Dehusked black malt — smooth dark colour with low harshness'},
+  {name:'Cherrywood Smoked Malt - Briess (USA)', potential:300, ebc:6, origin:'Briess (USA)', desc:'Sweet, fruity cherrywood smoke'},
+  {name:'Ashburne Mild Ale Malt - Briess (USA)', potential:300, ebc:12, origin:'Briess (USA)', desc:'Malty, slightly toasty mild-style base'},
+  {name:'Rye Malt - Briess (USA)', potential:284, ebc:8, origin:'Briess (USA)', desc:'Spicy rye character'},
+  {name:'White Wheat Malt - Briess (USA)', potential:317, ebc:4, origin:'Briess (USA)', desc:'Soft, bready wheat malt'},
+  {name:'Red Wheat Malt - Briess (USA)', potential:317, ebc:5, origin:'Briess (USA)', desc:'Fuller, slightly toasty wheat malt'},
+  {name:'Oat Malt - Briess (USA)', potential:275, ebc:5, origin:'Briess (USA)', desc:'Smooth, creamy body and soft grain flavour'},
+  {name:'2-Row Pale Malt - Great Western (USA)', potential:309, ebc:4, origin:'Great Western Malting (USA)', desc:'Clean American pale base malt'},
+  {name:'Pilsner Malt - Great Western (USA)', potential:309, ebc:3.5, origin:'Great Western Malting (USA)', desc:'Light, crisp base malt'},
+  {name:'Munich Malt - Great Western (USA)', potential:292, ebc:20, origin:'Great Western Malting (USA)', desc:'Malty, bready Munich malt'},
+  {name:'ESB Malt - Gambrinus (CAN)', potential:309, ebc:9, origin:'Gambrinus Malting (Canada)', desc:'Biscuity, toasty base for English-style ales'},
+  {name:'Pilsner Malt - Gambrinus (CAN)', potential:309, ebc:3.5, origin:'Gambrinus Malting (Canada)', desc:'Light, clean lager malt'},
+  {name:'Organic Pale Malt - Gambrinus (CAN)', potential:309, ebc:5, origin:'Gambrinus Malting (Canada)', desc:'Certified organic pale base malt'},
+  {name:'BB Crystal Malt Light - Barrett Burston (AUS)', potential:284, ebc:50, origin:'Barrett Burston (Australia)', desc:'Light caramel sweetness and golden colour'},
+  {name:'BB Rye Malt - Barrett Burston (AUS)', potential:284, ebc:8, origin:'Barrett Burston (Australia)', desc:'Spicy rye character'},
+  {name:'Powells Vienna Malt - Powells Craft Malt (AUS)', potential:300, ebc:8, origin:'Powells Craft Malt (Tasmania, Australia)', desc:'Light toasty Tasmanian Vienna malt'},
+  {name:'Powells Crystal Malt - Powells Craft Malt (AUS)', potential:284, ebc:120, origin:'Powells Craft Malt (Tasmania, Australia)', desc:'Caramel sweetness from Tasmanian barley'},
+  {name:'Powells Chocolate Malt - Powells Craft Malt (AUS)', potential:234, ebc:900, origin:'Powells Craft Malt (Tasmania, Australia)', desc:'Roasted cocoa and coffee notes'},
+  {name:'Amaranth Malt - Various', potential:250, ebc:5, origin:'Various (GF specialty maltsters)', desc:'Earthy gluten-free ancient-grain malt'},
+  {name:'Certified Gluten-Free Oats - Various', potential:275, ebc:2, origin:'Various (GF specialty maltsters)', desc:'Gluten-free oats — silky body for GF stouts and hazy styles'},
+  {name:'Corn Malt - Various', potential:284, ebc:4, origin:'Various (GF specialty maltsters)', desc:'Light, sweet gluten-free corn character'},
+  {name:'Roasted Buckwheat - Various', potential:234, ebc:700, origin:'Various (GF specialty maltsters)', desc:'Gluten-free roast — nutty, cocoa-like colour for dark GF beers'},
+  {name:'Millet Flakes - Various', potential:267, ebc:3, origin:'Various (GF specialty maltsters)', desc:'Gluten-free flaked millet — light body and gentle sweetness'},
+  {name:'Muscovado Sugar - Various', potential:376, ebc:100, origin:'Various', desc:'Dark, molasses-rich unrefined sugar — rum, toffee and treacle'},
+  {name:'Demerara Sugar - Various', potential:384, ebc:12, origin:'Various', desc:'Light-brown crystals with mild caramel notes'},
+  {name:'Turbinado / Raw Sugar - Various', potential:384, ebc:8, origin:'Various', desc:'Lightly refined cane sugar — gentle molasses background'},
+  {name:'Jaggery - Various', potential:359, ebc:80, origin:'Various', desc:'Unrefined cane sugar — earthy caramel and mineral notes'},
+  {name:'Palm Sugar - Various', potential:359, ebc:40, origin:'Various', desc:'Soft caramel and butterscotch character'},
+  {name:'Coconut Sugar - Various', potential:351, ebc:30, origin:'Various', desc:'Mild caramel with a hint of coconut'},
+  {name:'Panela / Piloncillo - Various', potential:367, ebc:60, origin:'Various', desc:'Unrefined whole cane sugar — rich, earthy sweetness'},
+  {name:'Black Treacle - Various', potential:300, ebc:500, origin:'Various', desc:'Dark, bittersweet and robust — stouts and old ales'},
+  {name:'Golden Syrup - Various', potential:309, ebc:12, origin:'Various', desc:'Light, buttery invert syrup — classic British brewing sugar'},
+  {name:'Blackstrap Molasses - Various', potential:275, ebc:250, origin:'Various', desc:'Very dark, strong and slightly bitter'},
+  {name:'Light Molasses - Various', potential:300, ebc:40, origin:'Various', desc:'Mild molasses sweetness and colour'},
+  {name:'Agave Nectar - Various', potential:292, ebc:6, origin:'Various', desc:'Neutral, highly fermentable syrup that dries the beer'},
+  {name:'Date Syrup - Various', potential:300, ebc:100, origin:'Various', desc:'Rich, fruity and caramel-like'},
+  {name:'Brown Rice Syrup - Various', potential:334, ebc:6, origin:'Various', desc:'Mild, fermentable gluten-free syrup'},
+  {name:'Rice Syrup Solids - Various', potential:359, ebc:3, origin:'Various', desc:'Neutral, dry, fermentable gluten-free sugar source'},
+  {name:'Sorghum Syrup - Various', potential:317, ebc:25, origin:'Various', desc:'Gluten-free syrup with a molasses-like, slightly tangy edge'},
+  {name:'High Maltose Corn Syrup - Various', potential:317, ebc:2, origin:'Various', desc:'Highly fermentable — thins body without adding flavour'},
+  {name:'Maltose - Various', potential:351, ebc:1, origin:'Various', desc:'Pure malt sugar — fully fermentable'},
+  {name:'Fructose - Various', potential:384, ebc:0, origin:'Various', desc:'Highly fermentable fruit sugar — dries the beer'},
+  {name:'Candi Syrup D-45 - Candi Syrup Inc. (USA)', potential:267, ebc:90, origin:'Candi Syrup Inc. (USA)', desc:'Light amber candi syrup — caramel and toffee'},
+  {name:'Candi Syrup D-90 - Candi Syrup Inc. (USA)', potential:267, ebc:180, origin:'Candi Syrup Inc. (USA)', desc:'Dark candi syrup — raisin, plum and rum notes'},
+  {name:'Candi Syrup D-180 - Candi Syrup Inc. (USA)', potential:267, ebc:355, origin:'Candi Syrup Inc. (USA)', desc:'Very dark candi syrup — dark fruit, burnt sugar and port notes'},
+  {name:'Candi Syrup Simplicity - Candi Syrup Inc. (USA)', potential:267, ebc:6, origin:'Candi Syrup Inc. (USA)', desc:'Pale, neutral candi syrup — boosts ABV without adding colour'},
+  {name:'Belgian Candi Sugar (Amber) - Various', potential:376, ebc:30, origin:'Various', desc:'Amber crystals — caramel and light toffee'},
+  {name:'Honey (Wildflower) - Various', potential:292, ebc:2, origin:'Various', desc:'Light, floral honey — dries the beer'},
+  {name:'Honey (Orange Blossom) - Various', potential:292, ebc:2, origin:'Various', desc:'Delicate citrus-blossom aroma'},
+  {name:'Honey (Leatherwood) - Various (Tasmania)', potential:292, ebc:12, origin:'Australia (Tasmania)', desc:'Rich, floral and spicy Tasmanian honey with distinctive aroma'},
+  {name:'Honey (Buckwheat) - Various', potential:292, ebc:40, origin:'Various', desc:'Dark, malty, molasses-like honey'},
+  {name:'Honey (Manuka) - Various', potential:292, ebc:10, origin:'New Zealand', desc:'Earthy, herbal, slightly mineral honey'},
+  {name:'Corn Grits - Various', potential:309, ebc:1, origin:'Various', desc:'Needs a cereal mash — light, clean lager adjunct'},
+  {name:'Cracked Corn - Various', potential:292, ebc:1, origin:'Various', desc:'Needs a cereal mash — neutral, lightens body'},
+  {name:'Rice (White / Jasmine) - Various', potential:317, ebc:1, origin:'Various', desc:'Needs a cereal mash — crisp, very neutral'},
+  {name:'Rice Grits - Various', potential:317, ebc:1, origin:'Various', desc:'Needs a cereal mash — clean, crisp finish'},
+  {name:'Oat Flour - Various', potential:267, ebc:2, origin:'Various', desc:'Silky body and haze'},
+  {name:'Quick Oats - Various', potential:275, ebc:2, origin:'Various', desc:'Pre-cooked — smooth mouthfeel for stouts and hazy styles'},
+  {name:'Wheat Flour - Various', potential:300, ebc:2, origin:'Various', desc:'Adds haze and body — useful in hazy IPAs'},
+  {name:'Raw Wheat - Various', potential:300, ebc:3, origin:'Various', desc:'Unmalted — needs a protein rest, adds tart bready character'},
+  {name:'Raw Barley - Various', potential:234, ebc:3, origin:'Various', desc:'Unmalted — dry, grainy character, benefits from a protein rest'},
+  {name:'Torrified Barley - Various', potential:275, ebc:4, origin:'Various', desc:'Puffed barley — body and head retention'},
+  {name:'Rye Flour - Various', potential:267, ebc:3, origin:'Various', desc:'Spicy, slick body — can make mashes sticky'},
+  {name:'Buckwheat Groats - Various', potential:250, ebc:5, origin:'Various', desc:'Gluten-free nutty, earthy grain adjunct'},
+  {name:'Quinoa Flakes - Various', potential:250, ebc:3, origin:'Various', desc:'Gluten-free flakes — light nutty flavour'},
+  {name:'Amaranth Flakes - Various', potential:234, ebc:3, origin:'Various', desc:'Gluten-free flakes — earthy, grassy character'},
+  {name:'Oat Hulls - Various', potential:0, ebc:0, origin:'Various', desc:'No extract — purely a lauter aid for sticky mashes'},
+  {name:'Extra Light DME - Various', potential:367, ebc:4, origin:'Various', desc:'Very pale dried malt extract for clean, light beers'},
+  {name:'Amber DME - Various', potential:359, ebc:22, origin:'Various', desc:'Toasty, caramel-tinged dried malt extract'},
+  {name:'Pilsen Light DME - Briess (USA)', potential:367, ebc:4, origin:'Briess (USA)', desc:'Delicate, very pale dried malt extract for lagers'},
+  {name:'Golden Light DME - Briess (USA)', potential:367, ebc:6, origin:'Briess (USA)', desc:'Clean, golden dried malt extract for pale ales'},
+  {name:'Traditional Dark DME - Briess (USA)', potential:351, ebc:40, origin:'Briess (USA)', desc:'Caramel and toast — for brown ales and porters'},
+  {name:'Spraymalt Extra Light - Muntons (ENG)', potential:367, ebc:4, origin:'Muntons (England)', desc:'Muntons dried malt extract — very pale and clean'},
+  {name:'Spraymalt Light - Muntons (ENG)', potential:367, ebc:6, origin:'Muntons (England)', desc:'Muntons dried malt extract — light and malty'},
+  {name:'Spraymalt Medium - Muntons (ENG)', potential:359, ebc:25, origin:'Muntons (England)', desc:'Muntons dried malt extract — toasty amber'},
+  {name:'Spraymalt Dark - Muntons (ENG)', potential:351, ebc:60, origin:'Muntons (England)', desc:'Muntons dried malt extract — dark, roasty depth'},
+  {name:'Light Malt Extract (LME) - Coopers (AUS)', potential:300, ebc:8, origin:'Coopers (Australia)', desc:'Liquid malt extract — a classic Aussie home-brew base'},
+  {name:'Dark Malt Extract (LME) - Coopers (AUS)', potential:300, ebc:35, origin:'Coopers (Australia)', desc:'Liquid malt extract — darker, toasty and caramelly'},
+  {name:'Wheat Malt Extract (LME) - Coopers (AUS)', potential:300, ebc:6, origin:'Coopers (Australia)', desc:'Liquid wheat malt extract — soft, bready base for wheat beers'},
+  {name:'Light Dry Malt - Coopers (AUS)', potential:367, ebc:6, origin:'Coopers (Australia)', desc:'Dried malt extract — clean and light'},
+  {name:'Dark Dry Malt - Coopers (AUS)', potential:351, ebc:45, origin:'Coopers (Australia)', desc:'Dried malt extract — darker, roastier'},
+  {name:'Apple Juice Concentrate - Various', potential:267, ebc:3, origin:'Various', desc:'Fermentable fruit sugar with subtle apple character'},
+  {name:'Grape Juice Concentrate - Various', potential:267, ebc:4, origin:'Various', desc:'Fermentable fruit sugar — vinous, light fruit notes'},
+  {name:'Raisins / Sultanas - Various', potential:234, ebc:40, origin:'Various', desc:'Dried fruit sugar — dark fruit and rum-like richness'},
+  {name:'Dates (Dried) - Various', potential:234, ebc:60, origin:'Various', desc:'Dried fruit sugar — toffee-like sweetness and dark fruit'},
+  {name:'Figs (Dried) - Various', potential:209, ebc:50, origin:'Various', desc:'Dried fruit sugar — jammy, nutty sweetness'},
 ];
 
 const HOP_DB = [
@@ -1446,6 +1660,95 @@ const HOP_DB = [
   {name:'Astra', aa:14, type:'Dual', origin:'Australia (Tasmania)', desc:'Tropical fruit with a pine backbone, modern HPA release'},
   {name:'Sylva', aa:13, type:'Dual', origin:'Australia (Tasmania)', desc:'Citrus and pine, versatile modern Australian hop'},
   {name:'Helga', aa:4.5, type:'Aroma', origin:'Australia (Tasmania)', desc:'Spicy, floral aroma hop with a gentle noble character'},
+  {name:'Apollo', aa:17, type:'Bittering', origin:'USA', desc:'Clean, high-alpha bittering with citrus and resin edges'},
+  {name:'Bravo', aa:15, type:'Dual', origin:'USA', desc:'Smooth bittering with orange, floral and light tropical fruit'},
+  {name:'Calypso', aa:14, type:'Dual', origin:'USA', desc:'Apple, pear and stone fruit with a soft lemon note'},
+  {name:'Cashmere', aa:8, type:'Dual', origin:'USA', desc:'Lemon, lime and melon with a soft coconut hint'},
+  {name:'Chelan', aa:13, type:'Bittering', origin:'USA', desc:'Clean, smooth bittering with mild herbal character'},
+  {name:'Delta', aa:6, type:'Aroma', origin:'USA', desc:'Soft citrus, melon and gentle spice'},
+  {name:'Eureka', aa:17, type:'Dual', origin:'USA', desc:'Resinous pine and citrus with a bold bittering punch'},
+  {name:'Ekuanot (Equinox)', aa:14, type:'Dual', origin:'USA', desc:'Tropical fruit, lime and green pepper with a dank edge'},
+  {name:'Falconer\'s Flight', aa:11, type:'Dual', origin:'USA', desc:'Blend of Pacific Northwest hops — citrus, tropical fruit and floral'},
+  {name:'Glacier', aa:5.5, type:'Aroma', origin:'USA', desc:'Mild fruity, earthy aroma with a clean bitterness'},
+  {name:'Horizon', aa:12, type:'Dual', origin:'USA', desc:'Clean bittering with floral and mild spicy notes'},
+  {name:'Jarrylo', aa:15, type:'Dual', origin:'USA', desc:'Banana, pear and spice with stone-fruit complexity'},
+  {name:'Lemondrop', aa:6.5, type:'Aroma', origin:'USA', desc:'Bright lemon-drop citrus and lemongrass'},
+  {name:'Loral', aa:12.5, type:'Dual', origin:'USA', desc:'Floral, citrus and herbal with a hint of black pepper'},
+  {name:'Medusa', aa:5, type:'Aroma', origin:'USA', desc:'Mild tropical fruit and citrus with a clean finish'},
+  {name:'Meridian', aa:7.5, type:'Aroma', origin:'USA', desc:'Soft tropical fruit, honeydew and berry'},
+  {name:'Millennium', aa:15, type:'Bittering', origin:'USA', desc:'Smooth, clean bittering with a touch of herbal resin'},
+  {name:'Newport', aa:14, type:'Bittering', origin:'USA', desc:'Strong, clean bittering with mild fruity undertones'},
+  {name:'Palisade', aa:7.5, type:'Aroma', origin:'USA', desc:'Apricot, stone fruit and grass — gentle aroma character'},
+  {name:'Pekko', aa:14, type:'Dual', origin:'USA', desc:'Tropical fruit, pine and herbal complexity'},
+  {name:'Santiam', aa:6, type:'Aroma', origin:'USA', desc:'Noble-type spice and floral character, mild and clean'},
+  {name:'Sterling', aa:7, type:'Aroma', origin:'USA', desc:'Herbal, spicy, floral — a Saaz-style American aroma hop'},
+  {name:'Tahoma', aa:6.5, type:'Aroma', origin:'USA', desc:'Citrus and herbal notes in a refined aroma hop'},
+  {name:'Talus', aa:12, type:'Dual', origin:'USA', desc:'Tropical fruit, pine and berry with a bold aroma'},
+  {name:'Ultra', aa:3, type:'Aroma', origin:'USA', desc:'Mild, spicy noble-style aroma hop'},
+  {name:'Vanguard', aa:5.5, type:'Aroma', origin:'USA', desc:'Delicate herbal and spicy aroma, Hallertau-like'},
+  {name:'Belma', aa:12, type:'Dual', origin:'USA', desc:'Strawberry, melon and orange with sweet berry notes'},
+  {name:'Mt. Rainier', aa:7, type:'Aroma', origin:'USA', desc:'Floral, herbal and citrus with a mild bittering base'},
+  {name:'Fuggle (US)', aa:4.5, type:'Aroma', origin:'USA', desc:'Mild, earthy, woody — American-grown Fuggle'},
+  {name:'Hallertau (US)', aa:4, type:'Aroma', origin:'USA', desc:'Mild spicy, floral noble-type aroma grown in the US'},
+  {name:'Citra Cryo', aa:24, type:'Dual', origin:'USA (Yakima Chief)', desc:'Concentrated lupulin — intense tropical and citrus, roughly double the potency of whole pellets'},
+  {name:'Mosaic Cryo', aa:23, type:'Dual', origin:'USA (Yakima Chief)', desc:'Concentrated lupulin — berry, tropical fruit and pine with minimal vegetal matter'},
+  {name:'Simcoe Cryo', aa:22, type:'Dual', origin:'USA (Yakima Chief)', desc:'Concentrated lupulin — passionfruit and pine with a resinous punch'},
+  {name:'Centennial Cryo', aa:20, type:'Dual', origin:'USA (Yakima Chief)', desc:'Concentrated lupulin — floral citrus and pine'},
+  {name:'Cascade Cryo', aa:12, type:'Dual', origin:'USA (Yakima Chief)', desc:'Concentrated lupulin — grapefruit and floral, clean and bright'},
+  {name:'Amarillo Cryo', aa:18, type:'Dual', origin:'USA (Yakima Chief)', desc:'Concentrated lupulin — orange, peach and floral'},
+  {name:'Hop Extract (CO2)', aa:45, type:'Bittering', origin:'Various', desc:'Concentrated CO2 hop extract — clean, consistent bittering'},
+  {name:'Isomerized Hop Extract (Iso)', aa:30, type:'Bittering', origin:'Various', desc:'Pre-isomerized extract — efficient, predictable bittering, even post-ferment'},
+  {name:'Admiral', aa:14, type:'Bittering', origin:'England', desc:'Orange marmalade and herbal bitterness'},
+  {name:'Boadicea', aa:8.5, type:'Aroma', origin:'England', desc:'Fruity and floral modern English aroma hop'},
+  {name:'Brewer\'s Gold', aa:8, type:'Dual', origin:'England', desc:'Blackcurrant, spicy and resinous — a classic English bittering hop'},
+  {name:'Bullion', aa:8, type:'Bittering', origin:'England', desc:'Pungent blackcurrant and earthy bittering hop'},
+  {name:'Endeavour', aa:8.5, type:'Dual', origin:'England', desc:'Citrus, lime and floral — modern English dual-purpose hop'},
+  {name:'Godiva', aa:11, type:'Dual', origin:'England', desc:'Orange peel and floral with mild spice'},
+  {name:'Herald', aa:12, type:'Dual', origin:'England', desc:'Fresh orange and grapefruit with a clean finish'},
+  {name:'Jester', aa:7.5, type:'Aroma', origin:'England', desc:'Passion fruit, grapefruit and lychee'},
+  {name:'Northdown', aa:8.5, type:'Dual', origin:'England', desc:'Herbal, woody and spicy English character'},
+  {name:'Olicana', aa:7.5, type:'Aroma', origin:'England', desc:'Tropical mango and passionfruit, English-grown'},
+  {name:'Phoenix', aa:10, type:'Dual', origin:'England', desc:'Spicy, chocolatey, earthy and slightly citrus'},
+  {name:'Pilot', aa:10, type:'Dual', origin:'England', desc:'Marmalade, lemon and spice, mild and clean'},
+  {name:'Pioneer', aa:9, type:'Dual', origin:'England', desc:'Fresh herbal and lemon with spicy notes'},
+  {name:'Sovereign', aa:5, type:'Aroma', origin:'England', desc:'Soft floral, apple and mild herbal — Golding-like'},
+  {name:'WGV (Whitbread Golding Variety)', aa:5, type:'Aroma', origin:'England', desc:'Mild, earthy, honeyed — classic English Golding-type'},
+  {name:'Herkules', aa:16, type:'Bittering', origin:'Germany', desc:'Strong spicy and herbal bittering with a clean finish'},
+  {name:'Merkur', aa:12, type:'Dual', origin:'Germany', desc:'Spicy and citrus with a clean, firm bitterness'},
+  {name:'Saphir', aa:4, type:'Aroma', origin:'Germany', desc:'Citrus, lemon-zest and herbal — gentle noble-style aroma'},
+  {name:'Select (Spalter Select)', aa:5, type:'Aroma', origin:'Germany', desc:'Mild spicy and floral noble hop'},
+  {name:'Smaragd', aa:5, type:'Aroma', origin:'Germany', desc:'Spicy, delicate and fruity, similar to Saaz'},
+  {name:'Taurus', aa:15, type:'Bittering', origin:'Germany', desc:'Spicy and herbal, clean high-alpha bittering'},
+  {name:'Callista', aa:3.5, type:'Aroma', origin:'Germany', desc:'Peach, apricot and tropical fruit aroma'},
+  {name:'Ariana', aa:10, type:'Aroma', origin:'Germany', desc:'Fruity, floral and spicy aroma with blackcurrant notes'},
+  {name:'Diamant', aa:8, type:'Dual', origin:'Germany', desc:'Mild fruity and spicy bittering/aroma hop'},
+  {name:'Sladek', aa:6, type:'Aroma', origin:'Czechia', desc:'Noble, Saaz-like with mild spice and floral character'},
+  {name:'Premiant', aa:8, type:'Dual', origin:'Czechia', desc:'Refined, clean bitterness with mild herbal notes'},
+  {name:'Agnus', aa:10, type:'Bittering', origin:'Czechia', desc:'Clean, smooth bittering with mild fruit character'},
+  {name:'Kazbek', aa:5, type:'Aroma', origin:'Czechia', desc:'Fresh noble-style aroma with floral and herbal notes'},
+  {name:'Styrian Goldings', aa:4.5, type:'Aroma', origin:'Slovenia', desc:'Delicate, earthy, mildly floral — Fuggle-derived'},
+  {name:'Styrian Bobek', aa:4, type:'Aroma', origin:'Slovenia', desc:'Soft floral and spicy aroma, a Slovenian Golding variant'},
+  {name:'Styrian Aurora', aa:8, type:'Dual', origin:'Slovenia', desc:'Floral and citrus with a gentle bittering base'},
+  {name:'Styrian Celeia', aa:4.5, type:'Aroma', origin:'Slovenia', desc:'Delicate, Saaz-like, slightly fruity'},
+  {name:'Strisselspalt', aa:4, type:'Aroma', origin:'France', desc:'Delicate herbal and floral — Alsace noble-style hop'},
+  {name:'Aramis', aa:8, type:'Aroma', origin:'France', desc:'Spicy, citrus and herbal with a touch of tropical fruit'},
+  {name:'Triskel', aa:7, type:'Aroma', origin:'France', desc:'Soft citrus, spicy and floral aroma hop'},
+  {name:'Barbe Rouge', aa:8, type:'Aroma', origin:'France', desc:'Red fruit, raspberry and strawberry — distinctive French hop'},
+  {name:'Mistral', aa:6, type:'Aroma', origin:'France', desc:'Fruity and floral with soft citrus and tropical notes'},
+  {name:'Lublin', aa:4, type:'Aroma', origin:'Poland', desc:'Soft floral and noble-style spice similar to Saaz'},
+  {name:'Marynka', aa:10, type:'Dual', origin:'Poland', desc:'Herbal, spicy bittering with mild fruity notes'},
+  {name:'Waimea', aa:17, type:'Dual', origin:'New Zealand', desc:'Pine, citrus and tropical fruit with bold resin'},
+  {name:'Wakatu', aa:7, type:'Aroma', origin:'New Zealand', desc:'Lime and floral — a classic NZ aroma hop'},
+  {name:'Pacific Gem', aa:14, type:'Bittering', origin:'New Zealand', desc:'Woody, blackberry and earthy bittering hop'},
+  {name:'Pacific Jade', aa:13, type:'Dual', origin:'New Zealand', desc:'Citrus, pepper and spice with a clean finish'},
+  {name:'Green Bullet', aa:13, type:'Bittering', origin:'New Zealand', desc:'Spicy, herbal and resinous bittering hop'},
+  {name:'Kohatu', aa:6, type:'Aroma', origin:'New Zealand', desc:'Tropical fruit, pine and tangerine'},
+  {name:'Southern Cross', aa:12, type:'Dual', origin:'New Zealand', desc:'Lemon, spice and subtle pine character'},
+  {name:'Superdelic', aa:9, type:'Aroma', origin:'New Zealand', desc:'Citrus, grape and tropical fruit'},
+  {name:'Super Pride', aa:14, type:'Bittering', origin:'Australia', desc:'Clean, high-alpha Australian bittering hop with a citrus lift'},
+  {name:'Feux-Coeur Français', aa:5, type:'Aroma', origin:'Australia (Tasmania)', desc:'Delicate, floral and spicy — heritage hop grown in Tasmania'},
+  {name:'Cascade (AU)', aa:7, type:'Dual', origin:'Australia', desc:'Floral, citrus and grapefruit — locally grown Cascade'},
+  {name:'Sorachi Ace', aa:13, type:'Dual', origin:'Japan / USA', desc:'Lemon, dill and coconut — distinctive and polarising'},
 ];
 
 const YEAST_DB = [
@@ -1647,8 +1950,8 @@ function estimateEBC(ferms, batchL){
   const batchGal = batchL * 0.264172;
   const mcu = ferms.reduce((sum,f)=>{
     const weightLb = (parseFloat(f.amount)||0) * 2.20462;
-    const lovibond = ((parseFloat(f.ebc)||0) + 1.497) / 2.669;
-    return sum + weightLb*lovibond;
+    const srmColor = (parseFloat(f.ebc)||0) / 1.97; // stored EBC -> SRM (standard factor, as maltster sheets/brewing software use)
+    return sum + weightLb*srmColor;
   }, 0) / (batchGal||1);
   const srm = 1.4922 * Math.pow(mcu, 0.6859) || 0;
   return srm * 1.97;
@@ -1783,11 +2086,22 @@ function renderFermTable(){
         <div class="db-hint" id="ferm-hint-${i}"></div>
       </td>
       <td><input type="number" step="0.05" value="${f.amount}" oninput="window._editingFerms[${i}].amount=this.value;recalc()"></td>
+      <td><div id="ferm-pct-${i}" style="font-size:0.85rem;color:var(--foam-dim);text-align:center;">—</div></td>
       <td><input id="ferm-ebc-${i}" type="number" step="0.5" value="${f.ebc}" oninput="window._editingFerms[${i}].ebc=this.value;recalc()"></td>
       <td><input id="ferm-pot-${i}" type="number" step="1" value="${f.potential}" oninput="window._editingFerms[${i}].potential=this.value;recalc()"></td>
       <td><input type="number" step="0.5" value="${f.cost||0}" oninput="window._editingFerms[${i}].cost=this.value;recalc()"></td>
       <td><button class="icon-btn" onclick="removeFermentable(${i})">✕</button></td>
-    </tr>`).join('') || `<tr><td colspan="6" style="color:var(--foam-dim);">No fermentables yet.</td></tr>`;
+    </tr>`).join('') || `<tr><td colspan="7" style="color:var(--foam-dim);">No fermentables yet.</td></tr>`;
+  updateFermPercentages();
+}
+function updateFermPercentages(){
+  const total = (window._editingFerms||[]).reduce((s,f)=> s + (parseFloat(f.amount)||0), 0);
+  (window._editingFerms||[]).forEach((f,i)=>{
+    const el = document.getElementById('ferm-pct-'+i);
+    if(!el) return;
+    const amt = parseFloat(f.amount)||0;
+    el.textContent = total>0 ? (amt/total*100).toFixed(1)+'%' : '—';
+  });
 }
 
 function addHop(){ window._editingHops.push({name:'', amount:0, aa:10, time:60, use:'boil', cost:0}); renderHopTable(); }
@@ -1954,6 +2268,7 @@ function recalc(){
   const boilTime = parseFloat(document.getElementById('r-boil').value)||60;
   const eff = parseFloat(document.getElementById('r-eff').value)||72;
   const atten = parseFloat(document.getElementById('r-atten').value)||75;
+  updateFermPercentages();
   const og = estimateOG(window._editingFerms, batchL, eff);
   const fg = estimateFG(og, atten);
   const ibu = estimateIBU(window._editingHops, og, batchL, boilTime);
@@ -2273,6 +2588,80 @@ function calcHydroCorrection(){
   const corrected = measured * (factor(sampleF) / factor(calF));
   document.getElementById('h-out').innerHTML = corrected.toFixed(4);
 }
+function toggleGravityMethod(){
+  const isExtract = document.getElementById('gc-method').value === 'extract';
+  document.getElementById('gc-extract-row').style.display = isExtract ? 'grid' : 'none';
+}
+function handleGcExtractInput(val){
+  const match = FERMENTABLE_DB.find(f=>f.name.toLowerCase()===val.toLowerCase());
+  const hintEl = document.getElementById('gc-extract-hint');
+  if(match){
+    document.getElementById('gc-extract-potential').value = match.potential;
+    if(hintEl) hintEl.textContent = match.origin + ' — ' + match.desc;
+  } else if(hintEl){ hintEl.textContent = ''; }
+  calcGravityCorrection();
+}
+// All three methods boil down to conserving total gravity points (GU × volume
+// is proportional to dissolved extract mass, so it stays constant unless you
+// physically add or remove extract):
+//   dilute/boil: GU1·V1 = GU2·V2  ->  V2 = V1·GU1/GU2
+//   add extract: GU1·V1 + mass·potential = GU2·V1  ->  mass = (GU2-GU1)·V1/potential
+function calcGravityCorrection(){
+  const V1 = parseFloat(document.getElementById('gc-vol').value)||0;
+  const sg1 = parseFloat(document.getElementById('gc-current').value)||1;
+  const sg2 = parseFloat(document.getElementById('gc-target').value)||1;
+  const method = document.getElementById('gc-method').value;
+  const out = document.getElementById('gc-out');
+  const warnEl = document.getElementById('gc-warning');
+  const gu1 = (sg1-1)*1000;
+  const gu2 = (sg2-1)*1000;
+  warnEl.textContent = '';
+
+  if(method==='dilute'){
+    if(gu2>=gu1 || gu1<=0){
+      out.innerHTML = '';
+      warnEl.textContent = 'Target gravity must be lower than current gravity to dilute with water.';
+      return;
+    }
+    const V2 = V1*gu1/gu2;
+    const waterToAdd = V2-V1;
+    out.innerHTML = `
+      <div class="stat"><div class="stat-label">Water to add</div><div class="stat-value">${waterToAdd.toFixed(2)}<span class="unit">L</span></div></div>
+      <div class="stat"><div class="stat-label">Resulting volume</div><div class="stat-value">${V2.toFixed(2)}<span class="unit">L</span></div></div>
+    `;
+  } else if(method==='boil'){
+    if(gu2<=gu1 || gu1<=0){
+      out.innerHTML = '';
+      warnEl.textContent = 'Target gravity must be higher than current gravity to concentrate by boiling down.';
+      return;
+    }
+    const V2 = V1*gu1/gu2;
+    const volToRemove = V1-V2;
+    out.innerHTML = `
+      <div class="stat"><div class="stat-label">Volume to boil off</div><div class="stat-value">${volToRemove.toFixed(2)}<span class="unit">L</span></div></div>
+      <div class="stat"><div class="stat-label">Resulting volume</div><div class="stat-value">${V2.toFixed(2)}<span class="unit">L</span></div></div>
+    `;
+    warnEl.textContent = 'Check your equipment profile\'s boil-off rate (Equipment & data) to estimate how long that extra boiling will take.';
+  } else {
+    const potential = parseFloat(document.getElementById('gc-extract-potential').value)||0;
+    if(gu2<=gu1){
+      out.innerHTML = '';
+      warnEl.textContent = 'Target gravity must be higher than current gravity to need an extract addition.';
+      return;
+    }
+    if(potential<=0){
+      out.innerHTML = '';
+      warnEl.textContent = 'Enter a potential for the sugar/extract (pick one from the list to auto-fill it).';
+      return;
+    }
+    const massKg = (gu2-gu1)*V1/potential;
+    out.innerHTML = `
+      <div class="stat"><div class="stat-label">Amount to add</div><div class="stat-value">${(massKg*1000).toFixed(0)}<span class="unit">g</span></div></div>
+      <div class="stat"><div class="stat-label">Resulting volume</div><div class="stat-value">≈${V1.toFixed(2)}<span class="unit">L</span></div></div>
+    `;
+    warnEl.textContent = 'Assumes the dissolved sugar\'s own volume is negligible — close enough for typical additions, but dissolve it in a small amount of boiled water first and stir in well.';
+  }
+}
 function calcYeastStarter(){
   const volL = parseFloat(document.getElementById('y-vol').value)||19;
   const og = parseFloat(document.getElementById('y-og').value)||1.050;
@@ -2472,6 +2861,104 @@ const STYLE_DB = [
   {name:'Australian Draught', og:[1.040,1.050], fg:[1.008,1.012], ibu:[15,20], ebc:[5.9,9.9], abv:[4.0,4.9], water:{ca:[50, 100],so4:[20, 60],cl:[30, 80],na:[0, 20],mg:[0, 10],hco3:[0, 75]}},
   {name:'Australian Old Ale', og:[1.060,1.090], fg:[1.012,1.020], ibu:[20,35], ebc:[23.6,49.3], abv:[6.0,8.0], water:{ca:[100, 150],so4:[50, 125],cl:[50, 125],na:[10, 25],mg:[10, 20],hco3:[150, 275]}},
   {name:'Australian Premium Lager', og:[1.048,1.056], fg:[1.008,1.012], ibu:[18,25], ebc:[5.9,9.9], abv:[4.8,5.6], water:{ca:[50, 100],so4:[20, 60],cl:[20, 60],na:[0, 20],mg:[0, 10],hco3:[0, 60]}},
+  {name:'Ordinary Bitter', og:[1.030,1.038], fg:[1.006,1.012], ibu:[25,35], ebc:[9.8,23.6], abv:[3.2,3.8], water:{ca:[100,175],so4:[150,300],cl:[50,100],na:[10,30],mg:[5,20],hco3:[0,75]}},
+  {name:'Best Bitter', og:[1.040,1.048], fg:[1.008,1.012], ibu:[25,40], ebc:[15.8,31.5], abv:[3.8,4.6], water:{ca:[100,175],so4:[150,300],cl:[50,100],na:[10,30],mg:[5,20],hco3:[0,75]}},
+  {name:'Strong Bitter / ESB', og:[1.048,1.060], fg:[1.010,1.016], ibu:[30,50], ebc:[15.8,35.5], abv:[4.6,6.2], water:{ca:[100,175],so4:[150,300],cl:[50,100],na:[10,30],mg:[5,20],hco3:[0,75]}},
+  {name:'English Pale Ale', og:[1.043,1.056], fg:[1.008,1.014], ibu:[20,40], ebc:[9.8,23.6], abv:[4.3,5.6], water:{ca:[100,175],so4:[150,300],cl:[50,100],na:[10,30],mg:[5,20],hco3:[0,75]}},
+  {name:'Burton Ale', og:[1.055,1.075], fg:[1.015,1.020], ibu:[40,60], ebc:[23.6,43.3], abv:[5.5,7.5], water:{ca:[100,175],so4:[150,300],cl:[50,100],na:[10,30],mg:[5,20],hco3:[0,75]}},
+  {name:'British Golden Ale', og:[1.038,1.053], fg:[1.006,1.012], ibu:[20,45], ebc:[3.9,11.8], abv:[3.8,5], water:{ca:[100,175],so4:[150,300],cl:[50,100],na:[10,30],mg:[5,20],hco3:[0,75]}},
+  {name:'Dark Mild', og:[1.030,1.038], fg:[1.008,1.013], ibu:[10,25], ebc:[23.6,49.2], abv:[3,3.8], water:{ca:[75,125],so4:[40,100],cl:[60,120],na:[10,25],mg:[5,15],hco3:[50,150]}},
+  {name:'Light Mild', og:[1.030,1.038], fg:[1.008,1.012], ibu:[10,25], ebc:[11.8,23.6], abv:[3,3.8], water:{ca:[75,125],so4:[40,100],cl:[60,120],na:[10,25],mg:[5,15],hco3:[50,150]}},
+  {name:'Northern English Brown Ale', og:[1.040,1.052], fg:[1.008,1.013], ibu:[20,30], ebc:[23.6,43.3], abv:[4.2,5.4], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Southern English Brown Ale', og:[1.033,1.042], fg:[1.011,1.014], ibu:[12,20], ebc:[37.4,69], abv:[2.8,4.1], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Brown Porter', og:[1.040,1.052], fg:[1.008,1.014], ibu:[18,35], ebc:[39.4,59.1], abv:[4,5.4], water:{ca:[75,150],so4:[50,125],cl:[50,125],na:[10,25],mg:[5,15],hco3:[100,250]}},
+  {name:'Robust Porter', og:[1.048,1.065], fg:[1.012,1.016], ibu:[25,50], ebc:[43.3,69], abv:[4.8,6.5], water:{ca:[75,150],so4:[50,125],cl:[50,125],na:[10,25],mg:[5,15],hco3:[100,250]}},
+  {name:'Sweet Stout / Milk Stout', og:[1.044,1.060], fg:[1.012,1.024], ibu:[20,40], ebc:[59.1,78.8], abv:[4,6], water:{ca:[100,150],so4:[50,125],cl:[50,150],na:[10,30],mg:[10,20],hco3:[150,300]}},
+  {name:'Foreign Extra Stout', og:[1.056,1.075], fg:[1.010,1.018], ibu:[50,70], ebc:[59.1,78.8], abv:[5.5,8], water:{ca:[100,150],so4:[50,125],cl:[50,150],na:[10,30],mg:[10,20],hco3:[150,300]}},
+  {name:'English Old Ale', og:[1.060,1.090], fg:[1.015,1.022], ibu:[30,60], ebc:[23.6,43.3], abv:[6,9], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'English Strong Ale', og:[1.055,1.080], fg:[1.015,1.022], ibu:[30,60], ebc:[19.7,39.4], abv:[5.5,8], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'English Barleywine', og:[1.080,1.120], fg:[1.018,1.030], ibu:[35,70], ebc:[15.8,43.3], abv:[8,12], water:{ca:[125,200],so4:[75,200],cl:[75,150],na:[0,25],mg:[10,20],hco3:[50,200]}},
+  {name:'American Barleywine', og:[1.080,1.120], fg:[1.016,1.030], ibu:[50,100], ebc:[19.7,37.4], abv:[8,12], water:{ca:[125,200],so4:[75,200],cl:[75,150],na:[0,25],mg:[10,20],hco3:[50,200]}},
+  {name:'Scottish Light 60/-', og:[1.030,1.035], fg:[1.006,1.012], ibu:[10,20], ebc:[17.7,33.5], abv:[2.5,3.2], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Scottish Heavy 70/-', og:[1.035,1.040], fg:[1.010,1.015], ibu:[10,25], ebc:[17.7,33.5], abv:[3.2,3.9], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Scottish Export 80/-', og:[1.040,1.054], fg:[1.010,1.016], ibu:[15,30], ebc:[17.7,33.5], abv:[3.9,5], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Wee Heavy', og:[1.070,1.130], fg:[1.018,1.040], ibu:[17,35], ebc:[27.6,49.2], abv:[6.5,10], water:{ca:[125,200],so4:[75,200],cl:[75,150],na:[0,25],mg:[10,20],hco3:[50,200]}},
+  {name:'Irish Red Ale', og:[1.036,1.046], fg:[1.010,1.014], ibu:[18,28], ebc:[17.7,27.6], abv:[3.8,5], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Märzen / Oktoberfest', og:[1.054,1.060], fg:[1.010,1.014], ibu:[18,24], ebc:[15.8,33.5], abv:[5.8,6.3], water:{ca:[75,125],so4:[20,60],cl:[40,80],na:[0,15],mg:[5,15],hco3:[50,150]}},
+  {name:'Festbier', og:[1.054,1.057], fg:[1.010,1.012], ibu:[18,25], ebc:[7.9,13.8], abv:[5.8,6.3], water:{ca:[40,80],so4:[10,40],cl:[10,40],na:[0,15],mg:[0,10],hco3:[0,60]}},
+  {name:'Helles Bock / Maibock', og:[1.064,1.072], fg:[1.011,1.018], ibu:[23,35], ebc:[11.8,21.7], abv:[6.3,7.4], water:{ca:[75,150],so4:[20,60],cl:[40,100],na:[0,15],mg:[5,15],hco3:[75,175]}},
+  {name:'Traditional Bock', og:[1.064,1.072], fg:[1.013,1.019], ibu:[20,27], ebc:[27.6,43.3], abv:[6.3,7.2], water:{ca:[75,150],so4:[20,60],cl:[40,100],na:[0,15],mg:[5,15],hco3:[75,175]}},
+  {name:'Doppelbock', og:[1.072,1.112], fg:[1.016,1.024], ibu:[16,26], ebc:[11.8,49.2], abv:[7,10], water:{ca:[75,150],so4:[20,60],cl:[40,100],na:[0,15],mg:[5,15],hco3:[75,175]}},
+  {name:'Eisbock', og:[1.078,1.120], fg:[1.020,1.035], ibu:[25,50], ebc:[35.5,59.1], abv:[9,14], water:{ca:[75,150],so4:[20,60],cl:[40,100],na:[0,15],mg:[5,15],hco3:[75,175]}},
+  {name:'Dunkelweizen', og:[1.044,1.057], fg:[1.010,1.014], ibu:[10,18], ebc:[27.6,45.3], abv:[4.3,5.6], water:{ca:[50,100],so4:[10,40],cl:[20,60],na:[0,10],mg:[5,10],hco3:[75,150]}},
+  {name:'Weizenbock', og:[1.064,1.090], fg:[1.015,1.022], ibu:[15,30], ebc:[23.6,49.2], abv:[6.5,9], water:{ca:[50,100],so4:[10,40],cl:[20,60],na:[0,10],mg:[5,10],hco3:[75,150]}},
+  {name:'Kristallweizen', og:[1.044,1.052], fg:[1.010,1.014], ibu:[10,15], ebc:[3.9,9.8], abv:[4.3,5.4], water:{ca:[25,60],so4:[5,30],cl:[10,40],na:[0,10],mg:[0,10],hco3:[0,50]}},
+  {name:'Roggenbier', og:[1.046,1.056], fg:[1.010,1.014], ibu:[10,20], ebc:[27.6,37.4], abv:[4.5,6], water:{ca:[50,100],so4:[10,40],cl:[20,60],na:[0,10],mg:[5,10],hco3:[75,150]}},
+  {name:'Berliner Weisse', og:[1.028,1.032], fg:[1.003,1.006], ibu:[3,8], ebc:[3.9,5.9], abv:[2.8,3.8], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Gose', og:[1.036,1.056], fg:[1.006,1.010], ibu:[5,12], ebc:[5.9,7.9], abv:[4.2,4.8], water:{ca:[25,75],so4:[10,40],cl:[50,150],na:[50,150],mg:[0,10],hco3:[0,40]}},
+  {name:'Lichtenhainer', og:[1.032,1.040], fg:[1.004,1.008], ibu:[5,12], ebc:[5.9,11.8], abv:[3.5,4.7], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Rauchbier', og:[1.050,1.057], fg:[1.012,1.016], ibu:[20,30], ebc:[23.6,43.3], abv:[4.8,6], water:{ca:[75,125],so4:[25,75],cl:[50,100],na:[0,15],mg:[5,15],hco3:[50,150]}},
+  {name:'Schwarzbier', og:[1.046,1.052], fg:[1.010,1.016], ibu:[20,30], ebc:[33.5,59.1], abv:[4.4,5.4], water:{ca:[75,125],so4:[10,50],cl:[10,50],na:[0,15],mg:[5,15],hco3:[100,200]}},
+  {name:'Kellerbier / Zwickelbier', og:[1.048,1.054], fg:[1.010,1.014], ibu:[20,35], ebc:[7.9,23.6], abv:[4.8,5.4], water:{ca:[40,80],so4:[10,40],cl:[10,40],na:[0,15],mg:[0,10],hco3:[0,60]}},
+  {name:'Dortmunder Export', og:[1.048,1.056], fg:[1.010,1.015], ibu:[23,30], ebc:[7.9,11.8], abv:[5.1,6], water:{ca:[75,125],so4:[20,60],cl:[40,80],na:[0,15],mg:[5,15],hco3:[50,150]}},
+  {name:'Leichtbier', og:[1.026,1.034], fg:[1.006,1.010], ibu:[15,28], ebc:[3.9,9.8], abv:[2.4,3.6], water:{ca:[25,60],so4:[5,30],cl:[5,30],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Czech Premium Pale Lager', og:[1.044,1.060], fg:[1.013,1.017], ibu:[30,45], ebc:[6.9,11.8], abv:[4.2,5.8], water:{ca:[25,60],so4:[5,30],cl:[5,30],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Czech Pale Lager', og:[1.028,1.044], fg:[1.008,1.014], ibu:[20,35], ebc:[5.9,11.8], abv:[3,4.1], water:{ca:[25,60],so4:[5,30],cl:[5,30],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Czech Amber Lager', og:[1.044,1.060], fg:[1.013,1.017], ibu:[20,35], ebc:[19.7,31.5], abv:[4.4,5.8], water:{ca:[40,80],so4:[10,40],cl:[10,40],na:[0,15],mg:[0,10],hco3:[0,60]}},
+  {name:'Czech Dark Lager', og:[1.044,1.060], fg:[1.013,1.017], ibu:[18,34], ebc:[27.6,69], abv:[4.4,5.8], water:{ca:[75,125],so4:[10,50],cl:[10,50],na:[0,15],mg:[5,15],hco3:[100,200]}},
+  {name:'Grodziskie', og:[1.028,1.032], fg:[1.006,1.012], ibu:[20,25], ebc:[5.9,11.8], abv:[2.5,3.3], water:{ca:[75,125],so4:[25,75],cl:[50,100],na:[0,15],mg:[5,15],hco3:[50,150]}},
+  {name:'Sahti', og:[1.070,1.120], fg:[1.015,1.040], ibu:[0,15], ebc:[11.8,29.6], abv:[7,11], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Kveik Farmhouse Ale', og:[1.040,1.070], fg:[1.006,1.014], ibu:[15,30], ebc:[9.8,29.6], abv:[4.5,7], water:{ca:[50,100],so4:[50,100],cl:[50,100],na:[0,20],mg:[0,15],hco3:[0,75]}},
+  {name:'Belgian Blonde Ale', og:[1.062,1.075], fg:[1.008,1.018], ibu:[15,30], ebc:[7.9,13.8], abv:[6,7.5], water:{ca:[50,100],so4:[50,100],cl:[50,100],na:[0,20],mg:[0,15],hco3:[0,75]}},
+  {name:'Belgian Pale Ale', og:[1.048,1.054], fg:[1.010,1.014], ibu:[20,30], ebc:[15.8,27.6], abv:[4.8,5.5], water:{ca:[50,100],so4:[50,100],cl:[50,100],na:[0,20],mg:[0,15],hco3:[0,75]}},
+  {name:'Belgian Golden Strong Ale', og:[1.070,1.095], fg:[1.005,1.016], ibu:[22,35], ebc:[5.9,11.8], abv:[7.5,10.5], water:{ca:[50,100],so4:[50,100],cl:[50,100],na:[0,20],mg:[0,15],hco3:[0,75]}},
+  {name:'Belgian Dark Strong Ale / Quadrupel', og:[1.075,1.110], fg:[1.010,1.024], ibu:[20,35], ebc:[23.6,43.3], abv:[8,12], water:{ca:[75,125],so4:[40,100],cl:[50,100],na:[0,20],mg:[5,15],hco3:[50,150]}},
+  {name:'Belgian Single', og:[1.044,1.054], fg:[1.004,1.010], ibu:[25,45], ebc:[5.9,9.8], abv:[4.8,6], water:{ca:[50,100],so4:[50,100],cl:[50,100],na:[0,20],mg:[0,15],hco3:[0,75]}},
+  {name:'Grisette', og:[1.030,1.040], fg:[1.002,1.008], ibu:[20,30], ebc:[5.9,13.8], abv:[3,4], water:{ca:[50,100],so4:[50,100],cl:[50,100],na:[0,20],mg:[0,15],hco3:[0,75]}},
+  {name:'Belgian IPA', og:[1.058,1.090], fg:[1.008,1.016], ibu:[50,100], ebc:[9.8,29.6], abv:[6.2,9.5], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Flanders Red Ale', og:[1.048,1.057], fg:[1.002,1.012], ibu:[10,25], ebc:[19.7,31.5], abv:[4.6,6.5], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Oud Bruin', og:[1.040,1.074], fg:[1.008,1.012], ibu:[20,25], ebc:[29.6,43.3], abv:[4,8], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Lambic', og:[1.040,1.054], fg:[1.001,1.010], ibu:[0,10], ebc:[5.9,13.8], abv:[5,6.5], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Gueuze', og:[1.040,1.060], fg:[1.000,1.006], ibu:[0,10], ebc:[5.9,13.8], abv:[5,8], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Fruit Lambic', og:[1.040,1.060], fg:[1.000,1.010], ibu:[0,10], ebc:[5.9,13.8], abv:[5,7], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Bière de Garde', og:[1.060,1.080], fg:[1.008,1.016], ibu:[18,28], ebc:[11.8,37.4], abv:[6,8.5], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'West Coast IPA', og:[1.060,1.075], fg:[1.008,1.014], ibu:[55,80], ebc:[11.8,27.6], abv:[6,7.5], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Hazy Pale Ale (New England)', og:[1.044,1.056], fg:[1.008,1.014], ibu:[25,45], ebc:[5.9,13.8], abv:[4.5,6], water:{ca:[75,150],so4:[50,150],cl:[100,200],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Black IPA / Cascadian Dark Ale', og:[1.056,1.070], fg:[1.008,1.016], ibu:[50,90], ebc:[49.2,78.8], abv:[5.5,8], water:{ca:[100,150],so4:[100,200],cl:[50,100],na:[0,25],mg:[5,15],hco3:[50,150]}},
+  {name:'Brut IPA', og:[1.046,1.057], fg:[0.998,1.006], ibu:[20,30], ebc:[3.9,7.9], abv:[6,7.5], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Cold IPA', og:[1.050,1.060], fg:[1.004,1.010], ibu:[35,60], ebc:[3.9,9.8], abv:[6,7], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'India Pale Lager', og:[1.055,1.070], fg:[1.008,1.014], ibu:[40,60], ebc:[7.9,19.7], abv:[6,7.5], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Red IPA', og:[1.056,1.070], fg:[1.008,1.016], ibu:[50,75], ebc:[21.7,39.4], abv:[5.8,7.5], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Rye IPA', og:[1.056,1.075], fg:[1.008,1.014], ibu:[50,75], ebc:[11.8,27.6], abv:[5.5,8], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Imperial Red Ale', og:[1.070,1.090], fg:[1.014,1.020], ibu:[50,80], ebc:[23.6,39.4], abv:[7,9.5], water:{ca:[100,150],so4:[150,300],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'Milkshake IPA', og:[1.060,1.080], fg:[1.014,1.020], ibu:[25,50], ebc:[5.9,15.8], abv:[6,8], water:{ca:[75,150],so4:[50,150],cl:[100,200],na:[0,25],mg:[5,15],hco3:[0,50]}},
+  {name:'American Brown Ale', og:[1.045,1.060], fg:[1.010,1.016], ibu:[20,40], ebc:[35.5,69], abv:[4.3,6.2], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'American Porter', og:[1.050,1.070], fg:[1.012,1.018], ibu:[25,50], ebc:[43.3,78.8], abv:[4.8,6.5], water:{ca:[75,150],so4:[50,125],cl:[50,125],na:[10,25],mg:[5,15],hco3:[100,250]}},
+  {name:'American Stout', og:[1.050,1.075], fg:[1.010,1.022], ibu:[35,75], ebc:[59.1,78.8], abv:[5,7], water:{ca:[100,150],so4:[50,125],cl:[50,150],na:[10,30],mg:[10,20],hco3:[150,300]}},
+  {name:'Pastry Stout', og:[1.080,1.130], fg:[1.020,1.040], ibu:[20,50], ebc:[78.8,118.2], abv:[8,14], water:{ca:[125,200],so4:[75,175],cl:[75,175],na:[10,30],mg:[10,25],hco3:[200,350]}},
+  {name:'American Wheat Beer', og:[1.040,1.055], fg:[1.008,1.013], ibu:[15,30], ebc:[5.9,11.8], abv:[4,5.5], water:{ca:[25,60],so4:[5,30],cl:[10,40],na:[0,10],mg:[0,10],hco3:[0,50]}},
+  {name:'Cream Ale', og:[1.042,1.055], fg:[1.006,1.012], ibu:[8,20], ebc:[4.9,9.8], abv:[4.2,5.6], water:{ca:[40,80],so4:[10,40],cl:[10,40],na:[0,15],mg:[0,10],hco3:[0,60]}},
+  {name:'California Common / Steam Beer', og:[1.048,1.054], fg:[1.011,1.014], ibu:[30,45], ebc:[19.7,27.6], abv:[4.5,5.5], water:{ca:[75,125],so4:[20,60],cl:[40,80],na:[0,15],mg:[5,15],hco3:[50,150]}},
+  {name:'Blonde Ale', og:[1.038,1.054], fg:[1.008,1.013], ibu:[15,28], ebc:[5.9,11.8], abv:[3.8,5.5], water:{ca:[75,150],so4:[75,150],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,75]}},
+  {name:'American Lager', og:[1.040,1.050], fg:[1.004,1.010], ibu:[8,18], ebc:[3.9,7.9], abv:[4.2,5.3], water:{ca:[25,60],so4:[5,30],cl:[5,30],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Pre-Prohibition Lager', og:[1.044,1.060], fg:[1.010,1.015], ibu:[25,40], ebc:[5.9,11.8], abv:[4.5,6], water:{ca:[40,80],so4:[10,40],cl:[10,40],na:[0,15],mg:[0,10],hco3:[0,60]}},
+  {name:'American Amber Lager', og:[1.042,1.050], fg:[1.010,1.014], ibu:[18,30], ebc:[15.8,27.6], abv:[4.2,5.3], water:{ca:[75,125],so4:[20,60],cl:[40,80],na:[0,15],mg:[5,15],hco3:[50,150]}},
+  {name:'Mexican Lager', og:[1.040,1.050], fg:[1.008,1.012], ibu:[10,20], ebc:[3.9,9.8], abv:[3.9,5], water:{ca:[25,60],so4:[5,30],cl:[5,30],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Japanese Rice Lager', og:[1.040,1.050], fg:[1.004,1.010], ibu:[15,25], ebc:[3.9,7.9], abv:[4.5,5.5], water:{ca:[25,60],so4:[5,30],cl:[5,30],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Fruit Beer', og:[1.040,1.070], fg:[1.006,1.015], ibu:[5,30], ebc:[3.9,29.6], abv:[3,7], water:{ca:[50,100],so4:[25,75],cl:[25,75],na:[0,20],mg:[0,10],hco3:[0,50]}},
+  {name:'Kettle Sour', og:[1.030,1.050], fg:[1.003,1.008], ibu:[3,12], ebc:[3.9,11.8], abv:[3,5], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'American Wild Ale', og:[1.040,1.090], fg:[1.000,1.016], ibu:[5,30], ebc:[5.9,43.3], abv:[4.5,9], water:{ca:[25,75],so4:[10,40],cl:[10,60],na:[0,20],mg:[0,10],hco3:[0,40]}},
+  {name:'Smoothie Sour', og:[1.040,1.060], fg:[1.008,1.016], ibu:[3,10], ebc:[5.9,19.7], abv:[4,6], water:{ca:[50,100],so4:[25,75],cl:[25,75],na:[0,20],mg:[0,10],hco3:[0,50]}},
+  {name:'Spiced Beer', og:[1.040,1.080], fg:[1.008,1.016], ibu:[10,35], ebc:[9.8,59.1], abv:[4,8], water:{ca:[75,150],so4:[75,150],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,75]}},
+  {name:'Pumpkin Ale', og:[1.045,1.070], fg:[1.010,1.016], ibu:[10,25], ebc:[15.8,35.5], abv:[4.5,8], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Winter Warmer / Christmas Ale', og:[1.060,1.090], fg:[1.014,1.022], ibu:[20,45], ebc:[23.6,59.1], abv:[6,9], water:{ca:[75,150],so4:[25,75],cl:[75,150],na:[10,25],mg:[5,15],hco3:[75,175]}},
+  {name:'Honey Beer', og:[1.040,1.060], fg:[1.006,1.012], ibu:[15,30], ebc:[5.9,11.8], abv:[4,6], water:{ca:[75,150],so4:[75,150],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,75]}},
+  {name:'Gluten-Free Beer', og:[1.040,1.060], fg:[1.008,1.014], ibu:[15,30], ebc:[5.9,23.6], abv:[4,6], water:{ca:[75,150],so4:[75,150],cl:[50,100],na:[0,25],mg:[5,15],hco3:[0,75]}},
+  {name:'Table Beer / Small Beer', og:[1.020,1.035], fg:[1.004,1.010], ibu:[10,25], ebc:[5.9,19.7], abv:[1.5,3.5], water:{ca:[40,80],so4:[10,40],cl:[10,40],na:[0,15],mg:[0,10],hco3:[0,60]}},
+  {name:'Non-Alcoholic Beer', og:[1.015,1.030], fg:[1.008,1.020], ibu:[10,30], ebc:[5.9,15.8], abv:[0,0.5], water:{ca:[25,60],so4:[10,40],cl:[10,40],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Hop Water / Hopped Sparkling Water', og:[1.000,1.002], fg:[1.000,1.002], ibu:[0,30], ebc:[2,3.9], abv:[0,0], water:{ca:[50,100],so4:[100,250],cl:[25,75],na:[0,15],mg:[5,15],hco3:[0,25]}},
+  {name:'Radler / Shandy', og:[1.020,1.035], fg:[1.006,1.012], ibu:[3,12], ebc:[3.9,7.9], abv:[2,3.5], water:{ca:[25,60],so4:[10,40],cl:[10,40],na:[0,10],mg:[0,10],hco3:[0,40]}},
+  {name:'Kvass', og:[1.010,1.020], fg:[1.002,1.006], ibu:[0,5], ebc:[15.8,49.2], abv:[0.5,1.5], water:{ca:[25,60],so4:[10,40],cl:[10,40],na:[0,10],mg:[0,10],hco3:[0,40]}},
 ];
 function normalizeText(s){
   // strips accents/diacritics so "Kolsch" matches "Kölsch", "Dusseldorf" matches "Düsseldorf", etc.
@@ -3539,9 +4026,11 @@ function printBrewSheet(id){
     spargeStr = spargeVol.toFixed(1) + ' L';
   }
 
-  const fermRows = (r.fermentables||[]).map(f=>`
-    <tr><td><span class="ps-check"></span></td><td>${escapeHtml(f.name)||'—'}</td><td>${f.amount} kg</td><td>${f.ebc} EBC</td></tr>
-  `).join('') || `<tr><td colspan="4">No fermentables listed.</td></tr>`;
+  const fermTotalKg = (r.fermentables||[]).reduce((s,f)=> s + (parseFloat(f.amount)||0), 0);
+  const fermRows = (r.fermentables||[]).map(f=>{
+    const pct = fermTotalKg>0 ? ((parseFloat(f.amount)||0)/fermTotalKg*100).toFixed(1)+'%' : '—';
+    return `<tr><td><span class="ps-check"></span></td><td>${escapeHtml(f.name)||'—'}</td><td>${f.amount} kg</td><td>${pct}</td><td>${f.ebc} EBC</td></tr>`;
+  }).join('') || `<tr><td colspan="5">No fermentables listed.</td></tr>`;
 
   const hopRows = (r.hops||[]).map(h=>{
     const isDryHop = h.use==='dry hop';
@@ -3584,7 +4073,7 @@ function printBrewSheet(id){
       </div>
 
       <div class="ps-section-title">Grain bill</div>
-      <table><thead><tr><th></th><th>Fermentable</th><th>Amount</th><th>Color</th></tr></thead><tbody>${fermRows}</tbody></table>
+      <table><thead><tr><th></th><th>Fermentable</th><th>Amount</th><th>% bill</th><th>Color</th></tr></thead><tbody>${fermRows}</tbody></table>
 
       <div class="ps-section-title">Hop schedule</div>
       <table><thead><tr><th></th><th>Hop</th><th>Amount</th><th>Alpha acid</th><th>Time</th><th>Use</th></tr></thead><tbody>${hopRows}</tbody></table>
@@ -3662,7 +4151,7 @@ showView('dashboard');
 populatePresetSelect();
 populateAllWaterProfileSelects();
 buildDatalists();
-calcABV(); calcHopAA(); calcStrike(); calcDecoction(); calcWater(); calcPhAdjust(); calcPriming(); calcForcedCarb(); calcHydroCorrection(); calcYeastStarter(); calcSalesCosting();
+calcABV(); calcHopAA(); calcStrike(); calcDecoction(); calcWater(); calcPhAdjust(); calcPriming(); calcForcedCarb(); calcHydroCorrection(); calcGravityCorrection(); calcYeastStarter(); calcSalesCosting();
 
 (async function boot(){
   await detectStorageBackend();
